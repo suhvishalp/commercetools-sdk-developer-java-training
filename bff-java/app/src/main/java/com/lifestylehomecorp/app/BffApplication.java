@@ -4,6 +4,8 @@ import com.lifestylehomecorp.cart.CartApplication;
 import com.lifestylehomecorp.catalog.CatalogApplication;
 import com.lifestylehomecorp.customer.CustomerApplication;
 import com.lifestylehomecorp.discovery.DiscoveryApplication;
+import com.lifestylehomecorp.extensibility.ExtensibilityApplication;
+import com.lifestylehomecorp.order.OrderApplication;
 import com.lifestylehomecorp.project.ProjectApplication;
 import com.lifestylehomecorp.training.TrainingApplication;
 import org.springframework.boot.SpringApplication;
@@ -26,7 +28,8 @@ import org.springframework.context.annotation.FilterType;
                 type = FilterType.ASSIGNABLE_TYPE,
                 classes = {ProjectApplication.class, CatalogApplication.class,
                         DiscoveryApplication.class, CartApplication.class,
-                        CustomerApplication.class, TrainingApplication.class}))
+                        CustomerApplication.class, OrderApplication.class, ExtensibilityApplication.class,
+                        TrainingApplication.class}))
 public class BffApplication {
 
     public static void main(String[] args) {

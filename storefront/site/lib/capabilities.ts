@@ -15,17 +15,18 @@ export interface CapabilityMeta {
   bffEndpoint: string;
 }
 
-// The course's session codenames — keep in step with planning/SESSION_PLAN.md ("At a glance").
+// The course's session codenames — keep in step with planning/session-tasks.md (the `## Session N`
+// headers) and the Canvas's SESSION_TITLES in commerce-canvas/src/lib/ui.ts.
 const SESSION_NAMES: Record<string, string> = {
-  'Session 1': 'Ignition — Platform, SDK & Project',
-  'Session 2': 'The Catalogue',
+  'Session 1': 'Ignition — Platform, SDK, Project & Stores',
+  'Session 2': 'The Catalogue — Product & Category Reads',
   'Session 3': 'Find It — Store-Scoped Discovery',
-  'Session 4': 'Fill the Basket — The Cart',
-  'Session 5': 'Know Your Customer — Identity',
-  'Session 6': 'Close the Deal — Checkout & Orders',
-  'Session 7': 'Beyond the BFF — Extensibility',
-  'Session 8': 'Sync the Catalogue — Import',
-  'Session 9': 'Connect',
+  'Session 4': 'Fill the Basket — Cart, Line Items & Discounts',
+  'Session 5': 'Know Your Customer — Identity, Accounts & Cart Merge',
+  'Session 6': 'Close the Deal — Checkout, Orders & Payments',
+  'Session 7': 'Beyond the BFF — Extension & Integration Mechanisms',
+  'Session 8': 'Package It — Connect: Author the Connector',
+  'Session 9': 'Ship It — Connect: Deploy, Operate & Capstone',
 };
 
 /** Session display order for the status board. */
@@ -80,8 +81,28 @@ export const CAPABILITY_META: Record<string, CapabilityMeta> = {
   'customer.emailVerify':  meta('customer.emailVerify',  'Session 5', 'Email verification',             'POST /api/customers/email/confirm'),
   'customer.session':      meta('customer.session',      'Session 5', 'Identity boundary (Me API vs BFF)','GET /api/session'),
   'customer.pii':          meta('customer.pii',          'Session 5', 'PII & GDPR: delete my account',  'DELETE /api/customers/me'),
-  'order.create':          meta('order.create',          'Session 6', 'Checkout + order placement',     'POST /api/orders'),
-  'inventory.read':        meta('inventory.read',        'Session 7', 'Availability badges',            'GET /api/inventory/{sku}'),
+  'order.checkoutSession': meta('order.checkoutSession', 'Session 6', 'Create the Checkout Session',    'POST /api/checkout/session'),
+  'order.orderNumber':     meta('order.orderNumber',     'Session 6', 'Your order number + idempotency', 'GET /api/checkout/order-number'),
+  'order.create':          meta('order.create',          'Session 6', 'Pay — the order Checkout created', 'GET /api/orders/{orderNumber}'),
+  'order.ledger':          meta('order.ledger',          'Session 6', 'The payment ledger',             'GET /api/orders/{orderNumber}/payments'),
+  'order.readiness':       meta('order.readiness',       'Session 6', 'Readiness for Payment Only',     'GET /api/checkout/readiness'),
+  'order.capture':         meta('order.capture',         'Session 6', 'Capture at fulfilment',          'POST /api/orders/{orderNumber}/capture'),
+  'order.states':          meta('order.states',          'Session 6', 'Order state machine',            'PUT /api/orders/{orderNumber}/state'),
+  'order.history':         meta('order.history',         'Session 6', 'Order history (my orders)',      'GET /api/orders'),
+  'order.recurring':       meta('order.recurring',       'Session 6', 'The subscription is born',       'GET /api/orders/{orderNumber}/subscription'),
+  'order.checkoutMode':    meta('order.checkoutMode',    'Session 6', 'paymentFlow vs checkoutFlow',    'GET /api/checkout/mode'),
+  // Session 7 — extensibility (mirrors bff-java/extensibility @TaskDescription capabilities)
+  'ext.customFields':      meta('ext.customFields',      'Session 7', 'Custom Fields: the gift message', 'PUT /api/cart/extras'),
+  'ext.customObjects':     meta('ext.customObjects',     'Session 7', 'Custom Objects: feature flags',   'GET /api/config/feature-flags'),
+  'ext.messages':          meta('ext.messages',          'Session 7', 'Messages: the order timeline',    'GET /api/orders/{orderNumber}/timeline'),
+  'ext.consumer':          meta('ext.consumer',          'Session 7', 'The idempotent consumer',         'POST /api/events/process'),
+  'ext.subscriptionConcept': meta('ext.subscriptionConcept', 'Session 7', 'Subscriptions (concept)',  'GET /api/extensibility/subscription-concept'),
+  'ext.extension':         meta('ext.extension',         'Session 7', 'Register an API Extension',       'POST /api/extensibility/extension'),
+  'ext.cartRules':         meta('ext.cartRules',         'Session 7', 'Extension handler: cart rules',   'POST /api/extensions/cart'),
+  'ext.import':            meta('ext.import',            'Session 7', 'Import API: the price feed',      'POST /api/import/prices'),
+  'ext.decision':          meta('ext.decision',          'Session 7', 'Which mechanism?',                'GET /api/extensibility/decisions'),
+  'ext.intake':            meta('ext.intake',            'Session 7', 'The intake plumbing (pre-built)', 'GET /api/extensibility/intake'),
+  'inventory.read':        meta('inventory.read',        'Session 4', 'Availability badges',            'GET /api/inventory/{sku}'),
 };
 
 export const ALL_CAPABILITIES: CapabilityMeta[] = Object.values(CAPABILITY_META);

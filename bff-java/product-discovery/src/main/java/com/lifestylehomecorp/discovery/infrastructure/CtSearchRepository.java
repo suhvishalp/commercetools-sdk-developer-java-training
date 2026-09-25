@@ -4,8 +4,8 @@ import com.commercetools.api.models.graph_ql.GraphQLResponse;
 import com.commercetools.api.client.ProjectApiRoot;
 import com.lifestylehomecorp.discovery.application.SearchRepository;
 import com.lifestylehomecorp.discovery.application.SearchRequest;
-import com.lifestylehomecorp.platform.errors.TaskNotImplementedException;
 import org.springframework.stereotype.Repository;
+import com.lifestylehomecorp.platform.errors.TaskNotImplementedException;
 
 /**
  * SDK gateway for the Product Search API. The ONE place SDK code is written for Session 3: build the

@@ -2,8 +2,11 @@
 
 import { useState } from 'react';
 import { useLocale } from 'next-intl';
+import useSWR from 'swr';
 import { FeatureGate } from '@/components/ui/FeatureGate';
 import { useCapability } from '@/context/capabilities-context';
+import { bffGet } from '@/lib/bff/client';
+import { CartExtrasView } from '@/lib/ext-types';
 import { useCart } from '@/hooks/useCart';
 import { useShoppingList } from '@/hooks/useShoppingList';
 import { CartLineView, MoneyView } from '@/lib/cart-types';
@@ -31,6 +34,31 @@ const SAMPLE_LINES: CartLineView[] = [
   }),
 ];
 const SAMPLE_TOTALS = { subtotal: m(93598), savings: m(500), shipping: null, tax: null, total: m(93098) };
+
+/**
+ * 7.7 — the `requiresWhiteGlove` Custom Field is written by the platform (our API Extension) before the cart
+ * is saved; the storefront only reads it. `lineCount` re-keys the read so a cart change refreshes the badge.
+ */
+function WhiteGloveBadge({ lineCount }: { lineCount: number }) {
+  const { unlocked } = useCapability('ext.cartRules');
+  const { data } = useSWR(unlocked ? ['cart/extras', lineCount] : null, ([p]) => bffGet<CartExtrasView>(p), {
+    refreshInterval: 8000,
+  });
+  const extras = data && data.ok ? data.data : null;
+  const on = extras ? extras.requiresWhiteGlove : true; // sample state while locked
+  return (
+    <div className="flex items-center gap-3 rounded-2xl border border-[var(--color-border)] bg-white p-4 text-sm">
+      <Sparkles size={16} className={on ? 'text-[var(--color-terra)]' : 'text-[var(--color-charcoal-light)]'} />
+      {on ? (
+        <span>
+          <strong>White Glove Delivery</strong> — added automatically for premium items. Set by LHC’s cart rules, on every channel.
+        </span>
+      ) : (
+        <span className="text-[var(--color-charcoal-light)]">Standard delivery — add an item of €400 or more and White Glove is added for you.</span>
+      )}
+    </div>
+  );
+}
 
 export function CartView() {
   const locale = useLocale();
@@ -112,6 +140,11 @@ export function CartView() {
               <p className="mt-2 text-xs text-[var(--color-sage)]">Applied: {cart.discountCodes.join(', ')}</p>
             ) : null}
           </form>
+        </FeatureGate>
+
+        {/* Session 7.7 — set by the cart-rules API Extension, never by this storefront */}
+        <FeatureGate capability="ext.cartRules" title="White Glove Delivery">
+          <WhiteGloveBadge lineCount={lines.length} />
         </FeatureGate>
 
         {/* Order summary */}

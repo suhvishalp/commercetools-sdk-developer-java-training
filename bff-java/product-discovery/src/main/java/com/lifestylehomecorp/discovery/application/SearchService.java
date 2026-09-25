@@ -4,7 +4,6 @@ import com.commercetools.api.models.product_type.AttributeDefinition;
 import com.commercetools.api.models.product_type.ProductType;
 import com.lifestylehomecorp.discovery.domain.PlpCard;
 import com.lifestylehomecorp.discovery.domain.PlpResponse;
-import com.lifestylehomecorp.platform.errors.TaskNotImplementedException;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -12,6 +11,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import com.lifestylehomecorp.platform.errors.TaskNotImplementedException;
 
 /**
  * Discovery use-cases. The repository returns the raw GraphQL response; this service resolves the

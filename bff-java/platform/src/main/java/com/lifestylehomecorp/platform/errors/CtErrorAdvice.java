@@ -88,6 +88,20 @@ public class CtErrorAdvice {
                         "Request body is missing or malformed — send a JSON body for this endpoint."));
     }
 
+    /**
+     * An unknown route -> 404, not the catch-all 500. Spring raises NoResourceFoundException when no
+     * handler matches; letting it fall through to the 500 below tells a participant who mistyped a URL
+     * that the server broke, which sends them debugging the wrong thing entirely.
+     */
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    public ResponseEntity<ApiError> handleNoResource(
+            org.springframework.web.servlet.resource.NoResourceFoundException ex) {
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(ApiError.of(HttpStatus.NOT_FOUND.value(),
+                        "No such endpoint: " + ex.getResourcePath() + " — check the path and HTTP method."));
+    }
+
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(CtErrorAdvice.class);
 
     /** Anything else -> 500, without leaking the exception type or stack trace. */

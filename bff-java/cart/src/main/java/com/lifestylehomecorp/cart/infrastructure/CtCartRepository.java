@@ -8,12 +8,15 @@ import com.commercetools.api.models.cart.CartRemoveDiscountCodeActionBuilder;
 import com.commercetools.api.models.cart.CartUpdateAction;
 import com.commercetools.api.models.cart.CartUpdateBuilder;
 import com.commercetools.api.models.cart.InventoryMode;
+import com.commercetools.api.models.type.CustomFieldsDraftBuilder;
+import com.commercetools.api.models.type.FieldContainerBuilder;
 import com.lifestylehomecorp.cart.application.CartContext;
 import com.lifestylehomecorp.cart.application.CartRepository;
-import com.lifestylehomecorp.platform.errors.TaskNotImplementedException;
+import com.lifestylehomecorp.platform.identity.OwnerStamp;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import com.lifestylehomecorp.platform.errors.TaskNotImplementedException;
 
 /**
  * SDK gateway for the Cart write model — the ONE place SDK code is written for Session 4. Each method
@@ -29,9 +32,11 @@ public class CtCartRepository implements CartRepository {
     private static final String EXPAND_RECURRENCE = "lineItems[*].recurrenceInfo.recurrencePolicy";
 
     private final ProjectApiRoot apiRoot;
+    private final OwnerStamp ownerStamp;
 
-    public CtCartRepository(ProjectApiRoot apiRoot) {
+    public CtCartRepository(ProjectApiRoot apiRoot, OwnerStamp ownerStamp) {
         this.apiRoot = apiRoot;
+        this.ownerStamp = ownerStamp;
     }
 
     @Override

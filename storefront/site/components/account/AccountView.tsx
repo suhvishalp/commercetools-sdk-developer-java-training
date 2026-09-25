@@ -1,6 +1,9 @@
 'use client';
 
+import useSWR from 'swr';
 import { FeatureGate } from '@/components/ui/FeatureGate';
+import { bffGet } from '@/lib/bff/client';
+import { OrderSummaryView } from '@/lib/order-types';
 
 const input = 'w-full rounded-lg border border-[var(--color-border)] px-3 py-2 text-sm';
 const card = 'space-y-4 rounded-2xl border border-[var(--color-border)] bg-white p-6';
@@ -14,6 +17,8 @@ const secondary = 'rounded-lg border border-[var(--color-border)] px-4 py-2 text
  * (5.8), the session banner (5.9) and account deletion (5.10). Sample content shows dimmed until then.
  */
 export function AccountView() {
+  const { data: ordersRes } = useSWR('orders', (p) => bffGet<OrderSummaryView[]>(p));
+  const orders = ordersRes && ordersRes.ok ? ordersRes.data ?? [] : null;
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <FeatureGate capability="customer.session" title="Signed-in state">
@@ -92,6 +97,30 @@ export function AccountView() {
           </div>
         </FeatureGate>
       </div>
+
+      <FeatureGate capability="order.history" title="My orders">
+        <div className={card}>
+          <h2 className="font-display text-xl">My orders</h2>
+          <ul className="divide-y divide-[var(--color-border)] text-sm">
+            {(orders ?? [
+              { orderNumber: 'LHC-20260914-7F3A2C', createdAt: new Date().toISOString(), total: { centAmount: 107700, currencyCode: 'EUR', fractionDigits: 2 }, orderState: 'Open', shipmentState: 'Pending', paymentState: 'Paid', customState: 'order-placed', lineCount: 3 },
+            ]).map((o) => (
+              <li key={o.orderNumber} className="flex items-center justify-between py-3">
+                <span>
+                  <a href={`checkout/confirmation?orderNumber=${encodeURIComponent(o.orderNumber)}`} className="font-mono font-semibold text-[var(--color-terra)]">
+                    {o.orderNumber}
+                  </a>
+                  <span className="ml-2 text-[var(--color-charcoal-light)]">{new Date(o.createdAt).toLocaleDateString()} · {o.lineCount} items</span>
+                </span>
+                <span className="text-xs">
+                  {o.customState ?? o.orderState} · payment {o.paymentState}
+                </span>
+              </li>
+            ))}
+            {orders && orders.length === 0 ? <li className="py-3 text-[var(--color-charcoal-light)]">No orders yet.</li> : null}
+          </ul>
+        </div>
+      </FeatureGate>
 
       <FeatureGate capability="customer.addresses" title="Address book">
         <div className={card}>

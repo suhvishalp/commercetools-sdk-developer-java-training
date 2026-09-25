@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { ModuleGroup, ParticipantSummary, ParticipantTelemetry, TaskSignal } from '../api/bff';
-import { amberShade, flattenTasks, orderedSessions, pct, shade } from '../lib/ui';
+import { amberShade, flattenTasks, orderedSessions, pct, sessionTitle, shade } from '../lib/ui';
 
 type SortKey = 'name' | 'completion';
 
@@ -97,11 +97,17 @@ export function TrainerDashboard({
           <thead>
             <tr className="border-b border-[var(--color-brd)] text-left text-[var(--color-text-secondary)]">
               <th className="px-3 py-2">{sortHeader('Participant', 'name')}</th>
-              {sessions.map((s) => (
-                <th key={s} className="px-3 py-2 text-center font-medium">
-                  {s}
-                </th>
-              ))}
+              {sessions.map((s) => {
+                const { codename, subtitle } = sessionTitle(s);
+                return (
+                  <th key={s} className="px-3 py-2 text-center font-medium" title={subtitle ? `${codename} · ${subtitle}` : undefined}>
+                    <span className="block">{s}</span>
+                    {codename ? (
+                      <span className="block text-[11px] font-normal text-[var(--color-text-muted)]">{codename}</span>
+                    ) : null}
+                  </th>
+                );
+              })}
               <th className="px-3 py-2 text-right">{sortHeader('Total', 'completion')}</th>
             </tr>
           </thead>

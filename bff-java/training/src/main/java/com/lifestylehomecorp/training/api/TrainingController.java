@@ -8,7 +8,7 @@ import com.lifestylehomecorp.training.api.TrainingDtos.ProgressResponse;
 import com.lifestylehomecorp.training.api.TrainingDtos.SessionGroup;
 import com.lifestylehomecorp.training.api.TrainingDtos.TaskItem;
 import com.lifestylehomecorp.training.catalog.TaskCatalog;
-import com.lifestylehomecorp.training.config.ParticipantIdentity;
+import com.lifestylehomecorp.platform.identity.ParticipantIdentity;
 import com.lifestylehomecorp.training.domain.ParticipantProgress;
 import com.lifestylehomecorp.training.domain.TaskDefinition;
 import com.lifestylehomecorp.training.domain.TaskProgress;

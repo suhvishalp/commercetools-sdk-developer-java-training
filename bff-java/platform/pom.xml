@@ -33,6 +33,16 @@
             <groupId>com.commercetools.sdk</groupId>
             <artifactId>commercetools-okhttp-client3</artifactId>
         </dependency>
+        <!-- commercetools Checkout API (Session 6): Payment Intents, Applications, Payment Integrations. -->
+        <dependency>
+            <groupId>com.commercetools.sdk</groupId>
+            <artifactId>commercetools-sdk-java-checkout</artifactId>
+        </dependency>
+        <!-- commercetools Import API (Session 7): Import Containers / Requests / Operations — its own host. -->
+        <dependency>
+            <groupId>com.commercetools.sdk</groupId>
+            <artifactId>commercetools-sdk-java-importapi</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>me.paulschwarz</groupId>

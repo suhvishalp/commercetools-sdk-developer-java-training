@@ -57,7 +57,7 @@ public class CartController {
                            @RequestParam(required = false, defaultValue = "EUR") String currency,
                            @RequestParam(required = false, defaultValue = "DE") String country) {
         return CartViewMapper.toView(cartService.createGuestCart(
-                new CartContext(currency, country, store, null))); // anonymousId = the session's (one guest identity)
+                CartContext.guest(currency, country, store, null))); // identity resolved by the service: customer if signed in, else the session's guest id
     }
 
     @TaskDescription(

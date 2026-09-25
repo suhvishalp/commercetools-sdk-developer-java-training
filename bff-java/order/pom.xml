@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.lifestylehomecorp</groupId>
+        <artifactId>training-bff</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>order</artifactId>
+    <name>order (domain module)</name>
+    <description>
+        Order domain (Session 6 — "Close the Deal"): checkout on commercetools Checkout (Payment Only) —
+        the Checkout Session with LHC's futureOrderNumber, then everything Checkout leaves to the BFF:
+        reading the order + payment ledger it created, readiness (incl. the billing address), capture via
+        the Payment Intents API, the order state machine, order history, and the Recurring Order born
+        from a subscription line. Depends on `platform` only — it carries its own cart read.
+    </description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.lifestylehomecorp</groupId>
+            <artifactId>platform</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <classifier>exec</classifier>
+                    <mainClass>com.lifestylehomecorp.order.OrderApplication</mainClass>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

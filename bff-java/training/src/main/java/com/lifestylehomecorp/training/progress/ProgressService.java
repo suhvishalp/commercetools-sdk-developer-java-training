@@ -1,7 +1,7 @@
 package com.lifestylehomecorp.training.progress;
 
 import com.lifestylehomecorp.training.catalog.TaskCatalog;
-import com.lifestylehomecorp.training.config.ParticipantIdentity;
+import com.lifestylehomecorp.platform.identity.ParticipantIdentity;
 import com.lifestylehomecorp.training.domain.ParticipantProgress;
 import com.lifestylehomecorp.training.domain.TaskDefinition;
 import com.lifestylehomecorp.training.domain.TaskEntry;

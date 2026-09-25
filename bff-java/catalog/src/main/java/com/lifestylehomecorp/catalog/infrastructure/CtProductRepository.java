@@ -8,10 +8,10 @@ import com.commercetools.api.models.product.ProductProjection;
 import com.commercetools.api.models.product.ProductProjectionPagedQueryResponse;
 import com.lifestylehomecorp.catalog.application.PriceSelection;
 import com.lifestylehomecorp.catalog.application.ProductRepository;
-import com.lifestylehomecorp.platform.errors.TaskNotImplementedException;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import com.lifestylehomecorp.platform.errors.TaskNotImplementedException;
 
 /**
  * SDK gateway for products — the ONE place participants write commercetools SDK code for the catalog

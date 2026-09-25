@@ -4,10 +4,10 @@ import com.commercetools.api.models.store.Store;
 import com.commercetools.api.models.store_country.StoreCountry;
 import com.lifestylehomecorp.project.domain.StoreContext;
 import com.lifestylehomecorp.project.domain.StoreSummary;
-import com.lifestylehomecorp.platform.errors.TaskNotImplementedException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import com.lifestylehomecorp.platform.errors.TaskNotImplementedException;
 
 /**
  * Application logic for Stores. The repository returns raw SDK types; this service maps them to the

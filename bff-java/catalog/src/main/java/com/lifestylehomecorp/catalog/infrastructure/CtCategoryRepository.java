@@ -3,10 +3,10 @@ package com.lifestylehomecorp.catalog.infrastructure;
 import com.commercetools.api.client.ProjectApiRoot;
 import com.commercetools.api.models.category.Category;
 import com.lifestylehomecorp.catalog.application.CategoryRepository;
-import com.lifestylehomecorp.platform.errors.TaskNotImplementedException;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import com.lifestylehomecorp.platform.errors.TaskNotImplementedException;
 
 /**
  * SDK gateway for categories — a participant TODO. Only the SDK call; mapping is in the service.

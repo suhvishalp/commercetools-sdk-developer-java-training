@@ -4,8 +4,8 @@ import com.commercetools.api.models.customer.Customer;
 import com.lifestylehomecorp.customer.domain.PriceContext;
 import com.lifestylehomecorp.customer.domain.ShopperContext;
 import com.lifestylehomecorp.platform.session.ShopperSession;
-import com.lifestylehomecorp.platform.errors.TaskNotImplementedException;
 import org.springframework.stereotype.Service;
+import com.lifestylehomecorp.platform.errors.TaskNotImplementedException;
 
 /**
  * The identity boundary (5.9): projects the BFF-held {@link ShopperSession} into what the browser may

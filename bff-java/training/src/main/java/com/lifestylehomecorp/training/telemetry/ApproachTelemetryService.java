@@ -1,6 +1,6 @@
 package com.lifestylehomecorp.training.telemetry;
 
-import com.lifestylehomecorp.training.config.ParticipantIdentity;
+import com.lifestylehomecorp.platform.identity.ParticipantIdentity;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

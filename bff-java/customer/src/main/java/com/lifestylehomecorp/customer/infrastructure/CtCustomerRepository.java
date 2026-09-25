@@ -10,6 +10,7 @@ import com.commercetools.api.models.customer.CustomerDraftBuilder;
 import com.commercetools.api.models.customer.CustomerEmailVerifyBuilder;
 import com.commercetools.api.models.customer.CustomerResetPasswordBuilder;
 import com.commercetools.api.models.customer.CustomerSignInResult;
+import com.commercetools.api.models.customer.CustomerSignin;
 import com.commercetools.api.models.customer.CustomerSigninBuilder;
 import com.commercetools.api.models.customer.CustomerToken;
 import com.commercetools.api.models.customer.CustomerUpdateAction;
@@ -17,19 +18,19 @@ import com.commercetools.api.models.customer.CustomerUpdateBuilder;
 import com.commercetools.api.models.store.StoreResourceIdentifierBuilder;
 import com.lifestylehomecorp.customer.application.CustomerRepository;
 import com.lifestylehomecorp.customer.application.SignUpInput;
-import com.lifestylehomecorp.platform.errors.TaskNotImplementedException;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import com.lifestylehomecorp.platform.errors.TaskNotImplementedException;
 
 /**
  * SDK gateway for the Customer — the ONE place SDK code is written for Session 5. Each method is a
  * single commercetools call returning the raw SDK type; {@link com.lifestylehomecorp.customer.application.CustomerService}
  * owns version + 409-retry and the PII-safe mapping.
  *
- * <p>Participants implement the SDK call in each stubbed method (5.1 / 5.2 / 5.5 / 5.7 / 5.10);
- * {@link #get}, {@link #findByEmail}, {@link #createEmailToken} and {@link #confirmEmail} are
- * trainer-provided plumbing (5.8 is a pre-built walkthrough).
+ * <p>This is the SOLUTION (answer key): every task method carries its SDK call. On the starter branch
+ * 5.1 / 5.2 / 5.5 / 5.7 / 5.10 throw {@code TaskNotImplementedException}; {@link #get},
+ * {@link #createEmailToken} and {@link #confirmEmail} are trainer-provided plumbing on both.
  */
 @Repository
 public class CtCustomerRepository implements CustomerRepository {
@@ -65,7 +66,8 @@ public class CtCustomerRepository implements CustomerRepository {
      * customer cart. Wrong email or password → the same 400 InvalidCredentials (passed through as-is).
      */
     @Override
-    public CustomerSignInResult signIn(String email, String password, String anonymousId, AnonymousCartSignInMode mode) {
+    public CustomerSignInResult signIn(String email, String password, String anonymousId, AnonymousCartSignInMode mode,
+                                       String storeKey) {
         // TODO (Task 5.2): POST /login with a CustomerSignin — email + password + anonymousId +
         // anonymousCartSignInMode — and return the raw CustomerSignInResult; its cart is the customer's
         // RECALCULATED active cart. The service re-points the session at it (5.3) and builds the merge

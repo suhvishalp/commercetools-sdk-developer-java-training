@@ -24,7 +24,6 @@ import com.lifestylehomecorp.customer.domain.IssuedToken;
 import com.lifestylehomecorp.customer.domain.MergeReport;
 import com.lifestylehomecorp.customer.domain.SignInOutcome;
 import com.lifestylehomecorp.platform.session.ShopperSession;
-import com.lifestylehomecorp.platform.errors.TaskNotImplementedException;
 import io.vrap.rmf.base.client.ApiHttpException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -34,6 +33,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.LongFunction;
+import com.lifestylehomecorp.platform.errors.TaskNotImplementedException;
 
 /**
  * Identity orchestration (Session 5). Composes update actions and maps the SDK customer to the
@@ -80,7 +80,7 @@ public class CustomerService {
     public SignInOutcome signIn(String email, String password) {
         AnonymousCartSignInMode mode = AnonymousCartSignInMode.MERGE_WITH_EXISTING_CUSTOMER_CART;
         String guestCartId = guestCartIdOrNull();
-        CustomerSignInResult result = repo.signIn(email, password, guestAnonymousIdOrNull(), mode);
+        CustomerSignInResult result = repo.signIn(email, password, guestAnonymousIdOrNull(), mode, storeOf(email));
         return adopt(result, mode.getJsonName(), guestCartId, null);
     }
 
@@ -101,6 +101,23 @@ public class CustomerService {
         // cart and the merge report is exact. The plain signIn(email, password) above shows the shape; the
         // decisions you own are in the @TaskDescription; see session-tasks-detailed.md § 5.3.
         throw new TaskNotImplementedException("5.3");
+    }
+
+    /**
+     * Which sign-in endpoint this email needs. 5.1 creates the customer WITH a store, which makes them
+     * Store-specific — and a Store-specific customer authenticates only at {@code /in-store/key={key}/login};
+     * the general endpoint answers InvalidCredentials, indistinguishable from a wrong password. So resolve
+     * the store from the account first. A global customer (no stores) returns null and signs in generally.
+     *
+     * <p>Looking the customer up by email server-side is safe: the BFF has the scope, nothing reaches the
+     * browser, and the platform still checks the password on the sign-in call itself.
+     */
+    private String storeOf(String email) {
+        Customer existing = repo.findByEmail(email);
+        if (existing == null || existing.getStores() == null || existing.getStores().isEmpty()) {
+            return null;
+        }
+        return existing.getStores().get(0).getKey();
     }
 
     /**

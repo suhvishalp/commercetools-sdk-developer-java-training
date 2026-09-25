@@ -4,11 +4,15 @@ Build a real storefront's backend — a **BFF** (Backend-for-Frontend) on commer
 method, with AI as your co-pilot**. As you implement each task, a capability unlocks and a section of
 the live **storefront** lights up.
 
-> **This release covers Sessions 1–5 — "Ignition" (Platform, SDK, Project & Stores), "The Catalogue"
+> **This release covers Sessions 1–7 — "Ignition" (Platform, SDK, Project & Stores), "The Catalogue"
 > (Product & Category reads), "Find It" (store-scoped, faceted, searchable discovery via the Product
-> Search API over GraphQL), "Fill the Basket" (the cart — the course's first write surface), and "Know
-> Your Customer" (identity: register, sign in, cart merge, customer pricing, the session boundary).**
-> Later sessions add more modules to the same codebase.
+> Search API over GraphQL), "Fill the Basket" (the cart — the course's first write surface), "Know
+> Your Customer" (identity: register, sign in, cart merge, customer pricing, the session boundary),
+> "Close the Deal" (Checkout, Orders & Payments — the Checkout Session, your own order number, the
+> payment ledger, capture, and the order state machine), and "Beyond the BFF" (the four extension
+> mechanisms: Custom Fields & Objects, Messages and an idempotent consumer, an API Extension the
+> platform calls before it saves your cart, and the Import API).**
+> Sessions 8 and 9 move the same handlers onto commercetools Connect.
 
 ## Branches
 
