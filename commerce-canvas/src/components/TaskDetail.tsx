@@ -89,6 +89,15 @@ function seedValues(task: TaskItem): Record<string, string> {
       return { key: 'bedding-bundle' };
     case 'catalog.localeSlugs':
       return { slug: 'charlie-armchair' };
+    // Session 6 — the order number LHC promised Checkout (GET /api/checkout/order-number shows the current one).
+    case 'order.create':
+    case 'order.ledger':
+    case 'order.capture':
+    case 'order.states':
+    case 'order.recurring':
+    // Session 7 — the timeline reads the Messages of an S6 order you own.
+    case 'ext.messages':
+      return { orderNumber: '<paste your LHC-… order number>' };
     default:
       return {};
   }
@@ -147,6 +156,42 @@ function seedBody(task: TaskItem): string {
       return j({ currentPassword: 'Lhc-demo-2026!', newPassword: 'Lhc-demo-2026!' });
     case 'customer.emailVerify':
       return j({ tokenValue: '<paste the value from POST /api/customers/email/token>' });
+    // Session 6 — the seeded order State machine: placed → picked → shipped → delivered (cancelled only from placed).
+    case 'order.states':
+      return j({ state: 'order-picked' });
+    // Session 7 — extensibility. 7.1 a Custom Field on the cart; 7.8 one row of the price feed (keys the
+    // seeder stamped: variant key = SKU, price key = SKU-CUR); 7.7 what the PLATFORM sends the handler —
+    // an ExtensionInput with the cart as it would be saved (11 units → your 400). NB: with EXTENSION_SECRET
+    // set the webhook wants the Authorization header, which Try It does not send — expect a 401 then, and
+    // test it through a real cart write instead.
+    case 'ext.customFields':
+      return j({ giftMessage: 'Happy birthday, Ada!' });
+    case 'ext.import':
+      // country matters: the catalogue's base prices are country-scoped, so the key is SKU-EUR-DE — same key
+      // as the seeder stamped → the PLP's €499 becomes €449. Without the country you would ADD a new price.
+      return j([{ sku: 'CARM-023', currencyCode: 'EUR', centAmount: 44900, country: 'DE' }]);
+    case 'ext.cartRules':
+      return j({
+        action: 'Update',
+        resource: {
+          typeId: 'cart',
+          id: 'try-it',
+          obj: {
+            id: 'try-it',
+            version: 1,
+            custom: { type: { typeId: 'type', id: 'order-extras' }, fields: { owner: 'you' } },
+            lineItems: [
+              {
+                id: 'li-1',
+                productId: 'charlie-armchair',
+                quantity: 11,
+                variant: { id: 1, sku: 'CARM-023' },
+                price: { id: 'p-1', value: { type: 'centPrecision', currencyCode: 'EUR', centAmount: 49900, fractionDigits: 2 } },
+              },
+            ],
+          },
+        },
+      });
     default:
       return '';
   }

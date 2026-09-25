@@ -62,6 +62,10 @@ export function bffPatch<T>(path: string, body?: unknown): Promise<BffResult<T>>
   return request<T>('PATCH', path, body);
 }
 
+export function bffPut<T>(path: string, body?: unknown): Promise<BffResult<T>> {
+  return request<T>('PUT', path, body);
+}
+
 export function bffDelete<T>(path: string): Promise<BffResult<T>> {
   return request<T>('DELETE', path);
 }

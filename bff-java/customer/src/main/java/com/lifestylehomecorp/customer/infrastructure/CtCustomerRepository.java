@@ -10,6 +10,7 @@ import com.commercetools.api.models.customer.CustomerDraftBuilder;
 import com.commercetools.api.models.customer.CustomerEmailVerifyBuilder;
 import com.commercetools.api.models.customer.CustomerResetPasswordBuilder;
 import com.commercetools.api.models.customer.CustomerSignInResult;
+import com.commercetools.api.models.customer.CustomerSignin;
 import com.commercetools.api.models.customer.CustomerSigninBuilder;
 import com.commercetools.api.models.customer.CustomerToken;
 import com.commercetools.api.models.customer.CustomerUpdateAction;
@@ -69,15 +70,21 @@ public class CtCustomerRepository implements CustomerRepository {
      * customer cart. Wrong email or password → the same 400 InvalidCredentials (passed through as-is).
      */
     @Override
-    public CustomerSignInResult signIn(String email, String password, String anonymousId, AnonymousCartSignInMode mode) {
-        return apiRoot.login()
-                .post(CustomerSigninBuilder.of()
-                        .email(email)
-                        .password(password)
-                        .anonymousId(anonymousId)
-                        .anonymousCartSignInMode(mode)
-                        .build())
-                .executeBlocking().getBody();
+    public CustomerSignInResult signIn(String email, String password, String anonymousId, AnonymousCartSignInMode mode,
+                                       String storeKey) {
+        CustomerSignin body = CustomerSigninBuilder.of()
+                .email(email)
+                .password(password)
+                .anonymousId(anonymousId)
+                .anonymousCartSignInMode(mode)
+                .build();
+        // A customer created WITH `stores` is Store-specific, and the general /login endpoint cannot
+        // authenticate them — it answers the same InvalidCredentials as a wrong password. Sign-up chose
+        // the store; sign-in has to follow it to /in-store/key={storeKey}/login.
+        if (storeKey != null && !storeKey.isBlank()) {
+            return apiRoot.inStore(storeKey).login().post(body).executeBlocking().getBody();
+        }
+        return apiRoot.login().post(body).executeBlocking().getBody();
     }
 
     @Override

@@ -3,11 +3,15 @@
 A layered ("hexagonal") Spring Boot **Backend-for-Frontend** for commercetools. This is where the
 course tasks live: you implement one SDK call at a time, and the storefront lights up.
 
-> **Sessions 1–5** — **Ignition** (Platform, SDK, Project & Stores), **The Catalogue** (Product &
+> **Sessions 1–7** — **Ignition** (Platform, SDK, Project & Stores), **The Catalogue** (Product &
 > Category reads, with channel/country/currency price selection), **Find It** (store-scoped discovery
 > via the Product Search API over GraphQL — search, facets, PLP), **Fill the Basket** (the cart write
-> model — update actions on a stateful cart carrying `version`), and **Know Your Customer** (identity —
-> sign-up / sign-in, the guest → customer cart merge, customer-group pricing, the BFF session boundary).
+> model — update actions on a stateful cart carrying `version`), **Know Your Customer** (identity —
+> sign-up / sign-in, the guest → customer cart merge, customer-group pricing, the BFF session boundary),
+> **Close the Deal** (Checkout, Orders & Payments — the Checkout Session, a deterministic order number,
+> reading what Checkout wrote, capture via the Payment Intents API, and a guarded order state machine),
+> and **Beyond the BFF** (Custom Fields & Custom Objects, Messages + an idempotent consumer, an API
+> Extension the platform calls *before* it saves a cart, and the Import API price feed).
 
 ## The shape (four layers)
 ```

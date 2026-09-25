@@ -64,9 +64,18 @@ public class CartService {
      * anonymousId is honoured only when the session has none yet.
      */
     public CartSummary createGuestCart(CartContext ctx) {
+        // A cart belongs to exactly one identity. If the shopper is signed in, the cart is THEIRS —
+        // creating it as anonymous leaves it unattached, and Session 6's readiness check then refuses
+        // to place an order for nobody (which is the correct behaviour, and a confusing symptom).
+        if (session.isSignedIn()) {
+            var cart = repo.create(CartContext.forCustomer(ctx.currency(), ctx.country(), ctx.storeKey(),
+                    session.customerIdOrNull()));
+            session.setActiveCart(cart.getId());
+            return CartMapper.toDomain(cart);
+        }
         String anonymousId = session.anonymousId() != null ? session.anonymousId()
                 : ctx.anonymousId() != null ? ctx.anonymousId() : session.anonymousIdOrCreate();
-        var cart = repo.create(new CartContext(ctx.currency(), ctx.country(), ctx.storeKey(), anonymousId));
+        var cart = repo.create(CartContext.guest(ctx.currency(), ctx.country(), ctx.storeKey(), anonymousId));
         session.setActiveCart(cart.getId(), anonymousId);
         return CartMapper.toDomain(cart);
     }

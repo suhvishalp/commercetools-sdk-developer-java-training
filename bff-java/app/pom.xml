@@ -44,6 +44,14 @@
         </dependency>
         <dependency>
             <groupId>com.lifestylehomecorp</groupId>
+            <artifactId>order</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.lifestylehomecorp</groupId>
+            <artifactId>extensibility</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.lifestylehomecorp</groupId>
             <artifactId>training</artifactId>
         </dependency>
         <dependency>

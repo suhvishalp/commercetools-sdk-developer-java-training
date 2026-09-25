@@ -4,7 +4,7 @@ import com.commercetools.api.models.project.Project;
 import com.lifestylehomecorp.catalog.application.ProductRepository;
 import com.lifestylehomecorp.platform.errors.TaskNotImplementedException;
 import com.lifestylehomecorp.project.application.ProjectRepository;
-import com.lifestylehomecorp.training.config.ParticipantIdentity;
+import com.lifestylehomecorp.platform.identity.ParticipantIdentity;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;

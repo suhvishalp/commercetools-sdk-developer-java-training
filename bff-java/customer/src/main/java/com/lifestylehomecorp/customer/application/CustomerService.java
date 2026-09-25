@@ -79,7 +79,7 @@ public class CustomerService {
     public SignInOutcome signIn(String email, String password) {
         AnonymousCartSignInMode mode = AnonymousCartSignInMode.MERGE_WITH_EXISTING_CUSTOMER_CART;
         String guestCartId = guestCartIdOrNull();
-        CustomerSignInResult result = repo.signIn(email, password, guestAnonymousIdOrNull(), mode);
+        CustomerSignInResult result = repo.signIn(email, password, guestAnonymousIdOrNull(), mode, storeOf(email));
         return adopt(result, mode.getJsonName(), guestCartId, null);
     }
 
@@ -95,8 +95,25 @@ public class CustomerService {
         AnonymousCartSignInMode mode = modeOf(mergeMode);
         String guestCartId = guestCartIdOrNull();
         Cart before = preflight(email, guestCartId, mode);
-        CustomerSignInResult result = repo.signIn(email, password, guestAnonymousIdOrNull(), mode);
+        CustomerSignInResult result = repo.signIn(email, password, guestAnonymousIdOrNull(), mode, storeOf(email));
         return adopt(result, mode.getJsonName(), guestCartId, before);
+    }
+
+    /**
+     * Which sign-in endpoint this email needs. 5.1 creates the customer WITH a store, which makes them
+     * Store-specific — and a Store-specific customer authenticates only at {@code /in-store/key={key}/login};
+     * the general endpoint answers InvalidCredentials, indistinguishable from a wrong password. So resolve
+     * the store from the account first. A global customer (no stores) returns null and signs in generally.
+     *
+     * <p>Looking the customer up by email server-side is safe: the BFF has the scope, nothing reaches the
+     * browser, and the platform still checks the password on the sign-in call itself.
+     */
+    private String storeOf(String email) {
+        Customer existing = repo.findByEmail(email);
+        if (existing == null || existing.getStores() == null || existing.getStores().isEmpty()) {
+            return null;
+        }
+        return existing.getStores().get(0).getKey();
     }
 
     /**

@@ -17,6 +17,7 @@ import java.util.concurrent.atomic.AtomicReference;
  *       before every update (fetch-before-update + 409 retry).</li>
  *   <li><b>customerId / customerGroupId</b> — set at sign-in (S5). {@code catalog} reads the group into
  *       price selection (5.6); {@code customer} resolves "me" from here, never from a request param (5.9).</li>
+ *   <li><b>checkoutAttempt</b> — the order number promised to Checkout for the current cart version (S6).</li>
  * </ul>
  *
  * In-memory + single shopper — enough for the course's single-user BFF; a real storefront keys this per
@@ -29,6 +30,16 @@ public class ShopperSession {
     private final AtomicReference<String> cartId = new AtomicReference<>();
     private final AtomicReference<String> customerId = new AtomicReference<>();
     private final AtomicReference<String> customerGroupId = new AtomicReference<>();
+    private final AtomicReference<CheckoutAttempt> checkoutAttempt = new AtomicReference<>();
+
+    /**
+     * The shopper's current checkout attempt (S6, task 6.2): the order number the BFF promised Checkout
+     * ({@code futureOrderNumber}) for a given cart at a given version. One attempt = one number = at most
+     * one order; a material cart change (new version) is a new attempt. Kept on the session here (single
+     * shopper); a multi-instance BFF would persist it as a Custom Field on the cart.
+     */
+    public record CheckoutAttempt(String cartId, Long cartVersion, String orderNumber) {
+    }
 
     // ---- cart (S4) ----------------------------------------------------------------------------
 
@@ -68,6 +79,23 @@ public class ShopperSession {
      */
     public String anonymousIdOrCreate() {
         return anonymousId.updateAndGet(a -> a != null ? a : UUID.randomUUID().toString());
+    }
+
+    // ---- checkout attempt (S6) -----------------------------------------------------------------
+
+    public CheckoutAttempt checkoutAttemptOrNull() {
+        return checkoutAttempt.get();
+    }
+
+    /** Remember the attempt for this cart version; replaces any earlier attempt (a new version = a new attempt). */
+    public void setCheckoutAttempt(CheckoutAttempt attempt) {
+        checkoutAttempt.set(attempt);
+    }
+
+    /** The order was placed (or the cart is gone): forget the attempt and the cart together. */
+    public void clearCheckout() {
+        checkoutAttempt.set(null);
+        cartId.set(null);
     }
 
     // ---- identity (S5) -------------------------------------------------------------------------
@@ -113,6 +141,7 @@ public class ShopperSession {
         customerId.set(null);
         customerGroupId.set(null);
         cartId.set(null);
+        checkoutAttempt.set(null);
         anonymousId.set(UUID.randomUUID().toString());
     }
 }

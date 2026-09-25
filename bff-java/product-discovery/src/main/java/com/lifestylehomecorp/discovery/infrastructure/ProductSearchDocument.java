@@ -153,7 +153,10 @@ final class ProductSearchDocument {
             clauses.add(SearchExpr.or(stores));
         }
         if (r.hasText()) {
-            String lang = blankToNull(r.locale());
+            // `name` is an ltext field: Product Search rejects a fullText/fuzzy clause on it without a
+            // language. Fall back to the same default the projection uses rather than emit a query the
+            // API will refuse — a caller who omits ?locale still gets results, not a 500.
+            String lang = localeOf(r);
             clauses.add(SearchExpr.or(List.of(
                     new SearchExpr.FullText("name", r.text(), lang),
                     new SearchExpr.Fuzzy("name", r.text(), 1, lang))));

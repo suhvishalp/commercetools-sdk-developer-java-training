@@ -21,9 +21,11 @@ public interface CustomerRepository {
 
     /**
      * 5.2 / 5.3 — authenticate (sign in). Returns the customer + their recalculated active cart; the
-     * mode decides what happens when the guest cart meets an existing customer cart.
+     * mode decides what happens when the guest cart meets an existing customer cart. {@code storeKey}
+     * selects the in-store sign-in endpoint: a Store-specific customer can ONLY authenticate there.
      */
-    CustomerSignInResult signIn(String email, String password, String anonymousId, AnonymousCartSignInMode mode);
+    CustomerSignInResult signIn(String email, String password, String anonymousId, AnonymousCartSignInMode mode,
+                                String storeKey);
 
     /** Fetch the current customer (customerGroup expanded) — used before every update for the latest version. */
     Customer get(String customerId);

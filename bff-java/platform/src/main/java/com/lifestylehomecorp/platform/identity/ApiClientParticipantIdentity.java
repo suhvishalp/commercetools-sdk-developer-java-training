@@ -1,19 +1,20 @@
-package com.lifestylehomecorp.training.config;
+package com.lifestylehomecorp.platform.identity;
 
 import com.commercetools.api.client.ProjectApiRoot;
 import com.lifestylehomecorp.platform.config.CtpProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
- * Resolves the participant from the **API client** the BFF authenticates with — no manual
+ * Resolves the participant from the <b>API client</b> the BFF authenticates with — no manual
  * PARTICIPANT_ID, so identity can't drift.
  *
  * <p>Reads the API client's NAME (e.g. "vishal_shah_api") via {@code GET /api-clients/{clientId}} and
- * uses it as the progress key. That endpoint needs the {@code manage_api_clients} scope; if the
- * client lacks it (or the lookup fails), we fall back to the {@code clientId} (always known from
- * config) so tracking still works — just with a less friendly key. Resolved once, lazily, cached.
+ * uses it as the key. That endpoint needs the {@code manage_api_clients} scope; if the client lacks it
+ * (or the lookup fails), we fall back to the {@code clientId} (always known from config) so tracking
+ * still works — just with a less friendly key. Resolved once, lazily, cached.
  */
 @Component
 public class ApiClientParticipantIdentity implements ParticipantIdentity {
@@ -22,16 +23,17 @@ public class ApiClientParticipantIdentity implements ParticipantIdentity {
 
     private final ProjectApiRoot apiRoot;
     private final CtpProperties ctp;
-    private final TrainingProperties props;
+    private final String configuredName;
 
     private volatile boolean resolved;
     private volatile String id;
     private volatile String name;
 
-    public ApiClientParticipantIdentity(ProjectApiRoot apiRoot, CtpProperties ctp, TrainingProperties props) {
+    public ApiClientParticipantIdentity(ProjectApiRoot apiRoot, CtpProperties ctp,
+                                        @Value("${training.participant-name:}") String configuredName) {
         this.apiRoot = apiRoot;
         this.ctp = ctp;
-        this.props = props;
+        this.configuredName = configuredName;
     }
 
     @Override
@@ -70,9 +72,7 @@ public class ApiClientParticipantIdentity implements ParticipantIdentity {
                     + "falling back to clientId. Cause: {}", e.getMessage());
         }
         this.id = clientId;
-        this.name = (props.getParticipantName() != null && !props.getParticipantName().isBlank())
-                ? props.getParticipantName()
-                : clientId;
+        this.name = (configuredName != null && !configuredName.isBlank()) ? configuredName : clientId;
         resolved = true;
     }
 

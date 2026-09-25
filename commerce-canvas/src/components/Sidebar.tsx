@@ -1,5 +1,5 @@
 import { ModuleGroup, TaskItem } from '../api/bff';
-import { groupBySession, methodColor, taskRef, tierClasses } from '../lib/ui';
+import { groupBySession, methodColor, sessionTitle, taskRef, tierClasses } from '../lib/ui';
 
 /** Left panel: tasks grouped by session, accordion style. Click a task to open it in the main panel. */
 export function Sidebar({
@@ -32,18 +32,27 @@ export function Sidebar({
         const done = tasks.filter((t) => completed.has(t.id)).length;
         const isOpen = expandedSession === session;
         const allDone = done === tasks.length;
+        const { codename, subtitle } = sessionTitle(session);
         return (
           <div key={session} className="border-b border-[var(--color-brd)]/60">
             <button
               onClick={() => onToggleSession(isOpen ? '' : session)}
-              className={`flex w-full items-center justify-between px-4 py-2.5 text-left hover:bg-[var(--color-bg-hover)] ${
+              title={subtitle ? `${session} — ${codename} · ${subtitle}` : session}
+              className={`flex w-full items-center justify-between gap-2 px-4 py-2.5 text-left hover:bg-[var(--color-bg-hover)] ${
                 isOpen ? 'bg-[var(--color-bg-panel)]' : ''
               }`}
             >
-              <span className={`text-sm font-medium ${allDone ? 'text-[var(--color-teal-light)]' : ''}`}>
-                {session}
+              <span className="min-w-0 flex-1">
+                <span className={`block truncate text-sm font-medium ${allDone ? 'text-[var(--color-teal-light)]' : ''}`}>
+                  {session}
+                  {codename ? <span className="text-[var(--color-text-muted)]"> · </span> : null}
+                  {codename}
+                </span>
+                {subtitle ? (
+                  <span className="block truncate text-[11px] leading-tight text-[var(--color-text-muted)]">{subtitle}</span>
+                ) : null}
               </span>
-              <span className="flex items-center gap-2">
+              <span className="flex shrink-0 items-center gap-2">
                 <span className="rounded-full bg-[var(--color-bg-card)] px-2 py-0.5 text-[11px] text-[var(--color-text-secondary)]">
                   {done}/{tasks.length}
                 </span>

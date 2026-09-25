@@ -23,7 +23,7 @@
       - platform  : shared kernel (ProjectApiRoot bean, config, error advice). No controllers.
       - project   : fully-worked reference vertical slice (GET /api/project) through all layers.
       - catalog   : domain module with api/application/domain pre-wired; ONLY infrastructure stubbed (501).
-      - product-discovery, cart, customer : further domain modules (S3, S4, S5), same shape as catalog.
+      - product-discovery, cart, customer, order : further domain modules (S3–S6), same shape as catalog.
       - training  : course task/progress tracking (participants rarely touch).
       - app       : aggregator that assembles every module and runs the full BFF on :8081.
       Every domain module depends on `platform` ONLY, never on each other or on `app`.
@@ -35,6 +35,8 @@
         <module>product-discovery</module>
         <module>cart</module>
         <module>customer</module>
+        <module>order</module>
+        <module>extensibility</module>
         <module>training</module>
         <module>app</module>
     </modules>
@@ -68,6 +70,18 @@
             <dependency>
                 <groupId>com.commercetools.sdk</groupId>
                 <artifactId>commercetools-okhttp-client3</artifactId>
+                <version>${commercetools.version}</version>
+            </dependency>
+            <!-- Checkout API (Sessions are plain HTTP; Payment Intents / Applications are typed here). -->
+            <dependency>
+                <groupId>com.commercetools.sdk</groupId>
+                <artifactId>commercetools-sdk-java-checkout</artifactId>
+                <version>${commercetools.version}</version>
+            </dependency>
+            <!-- Import API (Session 7): bulk price feed through import.{region}.commercetools.com. -->
+            <dependency>
+                <groupId>com.commercetools.sdk</groupId>
+                <artifactId>commercetools-sdk-java-importapi</artifactId>
                 <version>${commercetools.version}</version>
             </dependency>
 
@@ -114,6 +128,16 @@
             <dependency>
                 <groupId>com.lifestylehomecorp</groupId>
                 <artifactId>customer</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.lifestylehomecorp</groupId>
+                <artifactId>order</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.lifestylehomecorp</groupId>
+                <artifactId>extensibility</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

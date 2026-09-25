@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@commercetools/checkout-browser-sdk": "^1.7.4",
     "jose": "^6.2.3",
     "next": "16.2.10",
     "next-intl": "^4.13.1",

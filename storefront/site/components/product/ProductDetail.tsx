@@ -18,6 +18,7 @@ import { VariantSelector } from './VariantSelector';
 import { BundleContents } from './BundleContents';
 import { ProductView } from './types';
 import { SAMPLE_PRODUCT } from './samples';
+import { FeatureFlagsView } from '@/lib/ext-types';
 
 /**
  * The PDP. Gated on catalog.pdp; the refinements (scoped pricing, variant matrix, inventory,
@@ -28,6 +29,13 @@ function ProductDetailInner({ slug }: { slug: string }) {
   const { currency, country, channel, storeKey, storeName } = usePreferences();
   const { unlocked: pdpInStoreUnlocked } = useCapability('catalog.pdpInStore');
   const [subscribe, setSubscribe] = useState(false); // one-time vs Subscribe & Save (cart.recurring)
+  // Session 7.2 (ext.customObjects): ops can switch Subscribe & Save off in the `lhc-config/feature-flags`
+  // Custom Object — no deploy, no BFF restart. Read only once the task is unlocked; default = enabled.
+  const { unlocked: flagsUnlocked } = useCapability('ext.customObjects');
+  const { data: flagsRes } = useSWR(flagsUnlocked ? 'config/feature-flags' : null, (p) => bffGet<FeatureFlagsView>(p), {
+    refreshInterval: 10000,
+  });
+  const subscriptionsEnabled = !(flagsUnlocked && flagsRes?.ok && flagsRes.data?.value?.subscriptionsEnabled === false);
   const params = new URLSearchParams({ locale });
   if (currency) params.set('priceCurrency', currency);
   if (country) params.set('priceCountry', country);
@@ -166,6 +174,7 @@ function ProductDetailInner({ slug }: { slug: string }) {
             </FeatureGate>
           </div>
 
+          {subscriptionsEnabled ? (
           <FeatureGate capability="cart.recurring" title="Subscribe & Save">
             <fieldset className="rounded-xl border border-[var(--color-border)] bg-white p-3">
               <legend className="px-1 text-xs font-medium text-[var(--color-charcoal-light)]">Purchase options</legend>
@@ -191,10 +200,15 @@ function ProductDetailInner({ slug }: { slug: string }) {
               </label>
             </fieldset>
           </FeatureGate>
+          ) : (
+            <p id="cap-ext.customObjects" data-capability="ext.customObjects" className="rounded-xl border border-dashed border-[var(--color-border)] bg-white p-3 text-xs text-[var(--color-charcoal-light)]">
+              Subscribe &amp; Save is currently unavailable — switched off by ops (feature flag <code>subscriptionsEnabled</code>).
+            </p>
+          )}
 
           <div className="flex items-center gap-3 pt-1">
             <div className="flex-1">
-              <AddToCartButton full productKey={product?.key ?? slug} recurring={subscribe} recurrencePolicy="monthly" />
+              <AddToCartButton full productKey={product?.key ?? slug} recurring={subscribe && subscriptionsEnabled} recurrencePolicy="monthly" />
             </div>
             <WishlistButton productKey={product?.key ?? slug} />
           </div>

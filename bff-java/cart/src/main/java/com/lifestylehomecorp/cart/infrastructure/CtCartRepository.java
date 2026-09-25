@@ -8,8 +8,11 @@ import com.commercetools.api.models.cart.CartRemoveDiscountCodeActionBuilder;
 import com.commercetools.api.models.cart.CartUpdateAction;
 import com.commercetools.api.models.cart.CartUpdateBuilder;
 import com.commercetools.api.models.cart.InventoryMode;
+import com.commercetools.api.models.type.CustomFieldsDraftBuilder;
+import com.commercetools.api.models.type.FieldContainerBuilder;
 import com.lifestylehomecorp.cart.application.CartContext;
 import com.lifestylehomecorp.cart.application.CartRepository;
+import com.lifestylehomecorp.platform.identity.OwnerStamp;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -28,9 +31,11 @@ public class CtCartRepository implements CartRepository {
     private static final String EXPAND_RECURRENCE = "lineItems[*].recurrenceInfo.recurrencePolicy";
 
     private final ProjectApiRoot apiRoot;
+    private final OwnerStamp ownerStamp;
 
-    public CtCartRepository(ProjectApiRoot apiRoot) {
+    public CtCartRepository(ProjectApiRoot apiRoot, OwnerStamp ownerStamp) {
         this.apiRoot = apiRoot;
+        this.ownerStamp = ownerStamp;
     }
 
     @Override
@@ -38,10 +43,23 @@ public class CtCartRepository implements CartRepository {
         CartDraftBuilder draft = CartDraftBuilder.of()
                 .currency(ctx.currency())
                 .country(ctx.country())
-                .anonymousId(ctx.anonymousId())
                 .inventoryMode(InventoryMode.NONE);
+        // One identity per cart: the customer's, or the guest's — never both, never neither.
+        if (ctx.customerId() != null) {
+            draft.customerId(ctx.customerId());
+        } else {
+            draft.anonymousId(ctx.anonymousId());
+        }
         if (ctx.storeKey() != null && !ctx.storeKey().isBlank()) {
             draft.store(sr -> sr.key(ctx.storeKey()));
+        }
+        // Session 7 plumbing: stamp the participant as `owner` (Type order-extras) so their API Extension's
+        // conditional trigger fires only on THEIR carts. Skipped until the Type is seeded — the cart still works.
+        if (ownerStamp.typeExists()) {
+            draft.custom(CustomFieldsDraftBuilder.of()
+                    .type(t -> t.key(ownerStamp.typeKey()))
+                    .fields(FieldContainerBuilder.of().addValue(OwnerStamp.OWNER_FIELD, ownerStamp.owner()).build())
+                    .build());
         }
         return apiRoot.carts().post(draft.build()).executeBlocking().getBody();
     }

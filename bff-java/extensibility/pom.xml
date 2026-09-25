@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.lifestylehomecorp</groupId>
+        <artifactId>training-bff</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>extensibility</artifactId>
+    <name>extensibility (domain module)</name>
+    <description>
+        Extensibility domain (Session 7 — "Beyond the BFF"): the five ways to extend or integrate the platform,
+        side by side — Custom Fields (a gift message that snapshots onto the order), Custom Objects (a feature
+        flag the storefront obeys with no deploy), Messages (an order timeline + an idempotent poll-based
+        consumer), API Extensions (cart rules the platform enforces for every client, hosted here behind a
+        tunnel), and the Import API (a bulk price feed). Subscriptions are taught as a concept: their
+        destinations are cloud queues only, which Connect provisions in Session 8. Depends on `platform` only —
+        it carries its own cart / order reads and calls the order module over HTTP.
+    </description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.lifestylehomecorp</groupId>
+            <artifactId>platform</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <classifier>exec</classifier>
+                    <mainClass>com.lifestylehomecorp.extensibility.ExtensibilityApplication</mainClass>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

@@ -1,5 +1,28 @@
 import { ModuleGroup, TaskItem } from '../api/bff';
 
+/**
+ * The course's session codenames + subtitles — the sidebar and trainer dashboard show these next to
+ * the bare "Session N" label the BFF sends, so participants can navigate by what a session is *about*.
+ * Keep in step with planning/session-tasks.md (the `## Session N` headers) and the storefront's
+ * `SESSION_NAMES` in lib/capabilities.ts — the same list, stated in two front-ends.
+ */
+const SESSION_TITLES: Record<string, { codename: string; subtitle: string }> = {
+  'Session 1': { codename: 'Ignition', subtitle: 'Platform, SDK, Project & Stores' },
+  'Session 2': { codename: 'The Catalogue', subtitle: 'Product & Category Reads' },
+  'Session 3': { codename: 'Find It', subtitle: 'Store-Scoped Discovery' },
+  'Session 4': { codename: 'Fill the Basket', subtitle: 'Cart, Line Items & Discounts' },
+  'Session 5': { codename: 'Know Your Customer', subtitle: 'Identity, Accounts & Cart Merge' },
+  'Session 6': { codename: 'Close the Deal', subtitle: 'Checkout, Orders & Payments' },
+  'Session 7': { codename: 'Beyond the BFF', subtitle: 'Extension & Integration Mechanisms' },
+  'Session 8': { codename: 'Package It', subtitle: 'Connect: Author the Connector' },
+  'Session 9': { codename: 'Ship It', subtitle: 'Connect: Deploy, Operate & Capstone' },
+};
+
+/** Codename + subtitle for a session label; both empty for a label the course doesn't know. */
+export function sessionTitle(session: string): { codename: string; subtitle: string } {
+  return SESSION_TITLES[session] ?? { codename: '', subtitle: '' };
+}
+
 /** Tier accent: T1 = ct Violet (AI-accelerated), T2 = ct Yellow (human-in-the-loop).
     Solid fills with fixed-contrast text so the badge reads on both the dark shell and the light pane. */
 export function tierClasses(tier: string): string {
