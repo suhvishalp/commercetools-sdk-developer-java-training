@@ -2,12 +2,16 @@ package com.lifestylehomecorp.cart.application;
 
 import com.commercetools.api.models.cart.Cart;
 import com.commercetools.api.models.cart.LineItem;
+import com.commercetools.api.models.common.Address;
 import com.commercetools.api.models.common.LocalizedString;
 import com.commercetools.api.models.common.TypedMoney;
 import com.commercetools.api.models.recurrence_policy.RecurrencePolicy;
 import com.commercetools.api.models.recurrence_policy.StandardSchedule;
 import com.commercetools.api.models.recurring_order.LineItemRecurrenceInfo;
 import com.commercetools.api.models.shipping_method.ShippingMethod;
+import com.commercetools.api.models.shipping_method.ShippingRate;
+import com.commercetools.api.models.shipping_method.ZoneRate;
+import com.lifestylehomecorp.cart.domain.CartAddress;
 import com.lifestylehomecorp.cart.domain.CartLine;
 import com.lifestylehomecorp.cart.domain.CartSummary;
 import com.lifestylehomecorp.cart.domain.Money;
@@ -15,6 +19,7 @@ import com.lifestylehomecorp.cart.domain.ShippingOption;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /** Maps the raw SDK {@link Cart} into the SDK-free {@link CartSummary} the storefront renders. */
 public final class CartMapper {
@@ -84,6 +89,11 @@ public final class CartMapper {
             });
         }
 
+        String shippingMethodId = cart.getShippingInfo() != null && cart.getShippingInfo().getShippingMethod() != null
+                ? cart.getShippingInfo().getShippingMethod().getId() : null;
+        // One identity per cart (S5): the customer's once signed in / up, the guest's before.
+        String owner = cart.getCustomerId() != null ? "customer" : "guest";
+
         return new CartSummary(
                 cart.getId(),
                 cart.getVersion(),
@@ -97,12 +107,55 @@ public final class CartMapper {
                 tax,
                 money(cart.getTotalPrice()),
                 cart.getShippingInfo() != null ? cart.getShippingInfo().getShippingMethodName() : null,
+                shippingMethodId,
+                toAddress(cart.getShippingAddress()),
+                toAddress(cart.getBillingAddress()),
+                cart.getCustomerId(),
+                cart.getCustomerEmail(),
+                owner,
                 codes);
     }
 
-    /** 4.8 — a matching shipping method → the SDK-free option. */
-    public static ShippingOption toShippingOption(ShippingMethod m) {
-        return new ShippingOption(m.getId(), m.getKey(), m.getName(), Boolean.TRUE.equals(m.getIsDefault()));
+    /**
+     * 4.8 — a matching shipping method → the SDK-free option. The price is the rate the platform flagged
+     * as matching this cart ({@code isMatching}: right zone, right currency, value tier applied); falls
+     * back to the first rate in the cart's currency when the flag is absent.
+     */
+    public static ShippingOption toShippingOption(ShippingMethod m, String currency, String selectedId) {
+        ShippingRate rate = matchingRate(m, currency);
+        return new ShippingOption(
+                m.getId(),
+                m.getKey(),
+                localized(m.getLocalizedName(), m.getName()),
+                localized(m.getLocalizedDescription(), null),
+                Boolean.TRUE.equals(m.getIsDefault()),
+                rate != null ? money(rate.getPrice()) : null,
+                rate != null ? money(rate.getFreeAbove()) : null,
+                selectedId != null && selectedId.equals(m.getId()));
+    }
+
+    private static ShippingRate matchingRate(ShippingMethod m, String currency) {
+        ShippingRate byCurrency = null;
+        for (ZoneRate zr : m.getZoneRates() == null ? List.<ZoneRate>of() : m.getZoneRates()) {
+            for (ShippingRate r : zr.getShippingRates() == null ? List.<ShippingRate>of() : zr.getShippingRates()) {
+                if (Boolean.TRUE.equals(r.getIsMatching())) {
+                    return r;
+                }
+                if (byCurrency == null && r.getPrice() != null && Objects.equals(r.getPrice().getCurrencyCode(), currency)) {
+                    byCurrency = r;
+                }
+            }
+        }
+        return byCurrency;
+    }
+
+    /** 4.7 — the cart's shipping / billing address → SDK-free; null when the cart has none. */
+    static CartAddress toAddress(Address a) {
+        if (a == null) {
+            return null;
+        }
+        return new CartAddress(a.getFirstName(), a.getLastName(), a.getStreetName(), a.getStreetNumber(),
+                a.getPostalCode(), a.getCity(), a.getCountry());
     }
 
     /**
@@ -130,6 +183,11 @@ public final class CartMapper {
 
     private static Money money(TypedMoney m) {
         return m == null ? null : new Money(m.getCentAmount(), m.getCurrencyCode(), m.getFractionDigits());
+    }
+
+    /** Public localized read for other cart-module mappers (channel names / descriptions). */
+    static String localizedOr(LocalizedString text, String fallback) {
+        return localized(text, fallback);
     }
 
     private static String localized(LocalizedString name, String fallback) {

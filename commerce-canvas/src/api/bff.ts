@@ -103,6 +103,8 @@ async function getJson<T>(path: string): Promise<Fetched<T>> {
 }
 
 export const getTasks = () => getJson<ModuleGroup[]>('training/tasks');
+/** Optional: the backend describing itself (CIL track). 404 on the BFFs, which keeps the BFF wording. */
+export const getTrackMeta = () => getJson<Partial<import('../lib/track').TrackMeta>>('training/meta');
 /** The connected project — 5xx/501 until Task 1.1 is implemented, then the real project settings. */
 export const getProject = () => getJson<ProjectInfo>('project');
 export const getProgress = () => getJson<Progress>('training/progress');

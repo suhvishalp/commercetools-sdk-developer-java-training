@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Search, Lock } from '@/components/ui/icons';
 import { useRouter } from '@/i18n/routing';
@@ -18,12 +18,15 @@ export function SearchBar() {
   const searchParams = useSearchParams();
   const { loading, unlocked, meta } = useCapability('search.fullText');
   const { open } = useUnlockDialog();
-  const [q, setQ] = useState('');
-
-  // Reflect the active query (e.g. on load, or when navigated to /products?q=…).
-  useEffect(() => {
-    setQ(searchParams.get('q') ?? '');
-  }, [searchParams]);
+  // Reflect the active query (e.g. on load, or when navigated to /products?q=…): when the URL's q changes,
+  // adopt it as the box's value — the React-recommended "adjust state while rendering" pattern.
+  const urlQ = searchParams.get('q') ?? '';
+  const [q, setQ] = useState(urlQ);
+  const [seenUrlQ, setSeenUrlQ] = useState(urlQ);
+  if (urlQ !== seenUrlQ) {
+    setSeenUrlQ(urlQ);
+    setQ(urlQ);
+  }
 
   if (loading) return null;
 
@@ -37,15 +40,15 @@ export function SearchBar() {
         }
         router.push(`/products${q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ''}`);
       }}
-      className={`flex flex-1 items-center gap-2 rounded-full border border-[var(--color-border)] bg-white px-4 py-2 ${
+      className={`flex h-11 w-full items-center gap-2.5 rounded-full border-[1.5px] border-[var(--color-border)] bg-[var(--color-cream)] px-4 transition focus-within:border-[var(--color-violet)] focus-within:bg-white focus-within:shadow-[0_0_0_4px_var(--color-violet-light)] ${
         unlocked ? '' : 'opacity-70'
       }`}
     >
       {unlocked ? (
-        <Search size={16} className="shrink-0 text-[var(--color-charcoal-light)]" />
+        <Search size={18} className="shrink-0 text-[var(--color-muted)]" />
       ) : (
-        <button type="button" onClick={() => open(meta)} title={`Unlocks in ${meta.session}${meta.sessionName ? ` — ${meta.sessionName}` : ''}`}>
-          <Lock size={16} className="shrink-0 text-[var(--color-charcoal-light)]" />
+        <button type="button" onClick={() => open(meta)} title="Coming soon">
+          <Lock size={16} className="shrink-0 text-[var(--color-unlock)]" />
         </button>
       )}
       <input
@@ -53,8 +56,8 @@ export function SearchBar() {
         onChange={(e) => setQ(e.target.value)}
         onFocus={unlocked ? undefined : () => open(meta)}
         readOnly={!unlocked}
-        placeholder={unlocked ? 'Search furniture, décor, lighting…' : 'Search unlocks in Session 3 — Find It'}
-        className="w-full bg-transparent text-sm outline-none placeholder:text-[var(--color-charcoal-light)]"
+        placeholder="Search armchairs, rugs, candles…"
+        className="w-full bg-transparent text-[15px] outline-none placeholder:text-[var(--color-muted)]"
       />
     </form>
   );

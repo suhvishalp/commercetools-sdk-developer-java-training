@@ -70,12 +70,12 @@ export function VariantSelector({ productKey }: { productKey?: string }) {
   );
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {matrix.axes.map((axis) => (
         <div key={axis.name}>
-          <div className="mb-1 text-xs uppercase tracking-wide text-[var(--color-charcoal-light)]">
+          <div className="mb-2 flex justify-between text-sm font-semibold">
             {axis.name}
-            {selected[axis.name] ? <span className="normal-case">: {selected[axis.name]}</span> : null}
+            {selected[axis.name] ? <span className="font-normal text-[var(--color-muted)]">{selected[axis.name]}</span> : null}
           </div>
           <div className="flex flex-wrap gap-2">
             {axis.options.map((opt) => {
@@ -84,10 +84,10 @@ export function VariantSelector({ productKey }: { productKey?: string }) {
                 <button
                   key={opt}
                   onClick={() => setSelected((s) => ({ ...s, [axis.name]: opt }))}
-                  className={`rounded-lg border px-3 py-1.5 text-sm transition ${
+                  className={`h-[42px] rounded-[10px] border-[1.5px] px-4 text-sm font-medium transition ${
                     active
-                      ? 'border-[var(--color-terra)] bg-[var(--color-terra)]/10 text-[var(--color-terra)]'
-                      : 'border-[var(--color-border)] bg-white hover:border-[var(--color-terra)]'
+                      ? 'border-[var(--color-plum)] bg-[var(--color-plum)] text-white'
+                      : 'border-[var(--color-border)] bg-white hover:border-[var(--color-plum)]'
                   }`}
                 >
                   {opt}
@@ -98,19 +98,13 @@ export function VariantSelector({ productKey }: { productKey?: string }) {
         </div>
       ))}
 
-      <div className="text-xs text-[var(--color-charcoal-light)]">
-        {resolved ? (
-          <>
-            Selected variant <span className="font-mono">{resolved.sku}</span>
-            {resolved.price
-              ? ` · ${formatMoney(resolved.price.centAmount, resolved.price.currencyCode, locale)}`
-              : ''}
-            {resolved.available === false ? ' · out of stock' : ''}
-          </>
-        ) : (
-          'That combination isn’t available'
-        )}
-      </div>
+      {!resolved ? (
+        <p className="text-xs text-[var(--color-unlock-dark)]">That combination isn’t available.</p>
+      ) : resolved.available === false ? (
+        <p className="text-xs text-[var(--color-muted)]">Out of stock in this option.</p>
+      ) : resolved.price ? (
+        <p className="text-xs text-[var(--color-muted)]">{formatMoney(resolved.price.centAmount, resolved.price.currencyCode, locale)} in this option</p>
+      ) : null}
     </div>
   );
 }

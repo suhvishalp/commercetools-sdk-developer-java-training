@@ -59,24 +59,22 @@ export function BundleContents({ productKey }: { productKey?: string }) {
   const bundle = live ?? SAMPLE;
 
   return (
-    <div className="rounded-xl border border-[var(--color-border)] bg-white p-4">
-      <div className="mb-3 text-xs uppercase tracking-wide text-[var(--color-charcoal-light)]">
-        This set includes
-      </div>
+    <div className="surface p-5">
+      <p className="eyebrow mb-3">This set includes</p>
       <ul className="space-y-3">
         {bundle.components.map((c) => (
           <li key={c.key} className="flex items-center gap-3">
-            <div className="relative h-12 w-12 overflow-hidden rounded-lg bg-[var(--color-cream-dark)]">
+            <div className="relative h-12 w-12 overflow-hidden rounded-[10px] bg-[var(--color-earth)]">
               {c.imageUrl ? (
                 <Image src={c.imageUrl} alt={c.name} fill sizes="48px" className="object-cover" />
               ) : (
-                <div className="grid h-full place-items-center text-[var(--color-charcoal-light)]/40">
+                <div className="grid h-full place-items-center text-[var(--color-muted)]/40">
                   <Package size={18} />
                 </div>
               )}
             </div>
-            <span className="flex-1 text-sm">{c.name}</span>
-            <span className="text-sm text-[var(--color-charcoal-light)]">
+            <span className="flex-1 text-sm font-medium">{c.name}</span>
+            <span className="text-sm text-[var(--color-muted)]">
               {c.price ? formatMoney(c.price.centAmount, c.price.currencyCode, locale) : '—'}
             </span>
           </li>

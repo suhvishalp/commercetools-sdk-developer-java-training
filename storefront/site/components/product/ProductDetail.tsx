@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { Package, Star } from '@/components/ui/icons';
+import { Package, Star, ShieldCheck, Leaf, Gift, RotateCcw } from '@/components/ui/icons';
+import { Minus, Plus } from '@/components/ui/icons-extra';
 import { useLocale } from 'next-intl';
 import useSWR from 'swr';
 import { bffGet } from '@/lib/bff/client';
@@ -16,6 +17,8 @@ import { AddToCartButton } from './AddToCartButton';
 import { WishlistButton } from './WishlistButton';
 import { VariantSelector } from './VariantSelector';
 import { BundleContents } from './BundleContents';
+import { RelatedProducts } from './RelatedProducts';
+import { FulfilmentSelect, DELIVERY } from '@/components/cart/FulfilmentSelect';
 import { ProductView } from './types';
 import { SAMPLE_PRODUCT } from './samples';
 import { FeatureFlagsView } from '@/lib/ext-types';
@@ -29,6 +32,9 @@ function ProductDetailInner({ slug }: { slug: string }) {
   const { currency, country, channel, storeKey, storeName } = usePreferences();
   const { unlocked: pdpInStoreUnlocked } = useCapability('catalog.pdpInStore');
   const [subscribe, setSubscribe] = useState(false); // one-time vs Subscribe & Save (cart.recurring)
+  const [pickup, setPickup] = useState<string>(DELIVERY); // 4.5 — "" = delivery, else a pickup store's channel key
+  const [qty, setQty] = useState(1);
+  const [img, setImg] = useState(0);
   // Session 7.2 (ext.customObjects): ops can switch Subscribe & Save off in the `lhc-config/feature-flags`
   // Custom Object — no deploy, no BFF restart. Read only once the task is unlocked; default = enabled.
   const { unlocked: flagsUnlocked } = useCapability('ext.customObjects');
@@ -77,148 +83,248 @@ function ProductDetailInner({ slug }: { slug: string }) {
     mv ? formatMoney(mv.centAmount, mv.currencyCode, locale) : null;
   const recurringPriceLabel = product?.recurringPrice ? `${money(product.recurringPrice)}/mo` : null;
   const recurringOriginalLabel = money(product?.recurringOriginalPrice);
+  const discounted = !!(product?.originalPrice && product?.price && product.originalPrice.centAmount > product.price.centAmount);
+  const savingPct = discounted ? Math.round((1 - product.price!.centAmount / product.originalPrice!.centAmount) * 100) : 0;
+  const shownPrice = subscribe && product?.recurringPrice ? product.recurringPrice : product?.price;
+  const ctaTotal = shownPrice ? formatMoney(shownPrice.centAmount * qty, shownPrice.currencyCode, locale) : null;
+  const sku = `${product?.key?.toUpperCase().slice(0, 4) ?? 'LHC'}-0${(product?.key?.length ?? 7) + 10}`;
 
   return (
     <div>
-      <nav className="mb-6 text-xs text-[var(--color-charcoal-light)]">
-        <Link href="/" className="hover:text-[var(--color-terra)]">Home</Link> ·{' '}
-        <Link href="/products" className="hover:text-[var(--color-terra)]">Products</Link> ·{' '}
-        <span>{product?.name}</span>
+      <nav className="mb-5 flex items-center gap-2 text-[13.5px] text-[var(--color-muted)]">
+        <Link href="/" className="hover:text-[var(--color-violet)]">Home</Link>
+        <span>/</span>
+        <Link href="/products" className="hover:text-[var(--color-violet)]">Products</Link>
+        <span>/</span>
+        <span className="text-[var(--color-ink)]">{product?.name}</span>
       </nav>
 
-      <div className="grid gap-10 md:grid-cols-2">
+      <div className="grid gap-12 lg:grid-cols-[1.05fr_.95fr]">
         {/* Gallery */}
-        <div className="space-y-3">
-          <div className="relative aspect-square overflow-hidden rounded-2xl bg-[var(--color-cream-dark)]">
+        <div className="grid grid-cols-[84px_1fr] gap-3.5 self-start lg:sticky lg:top-[180px]">
+          <div className="flex flex-col gap-2.5">
+            {[0, 1, 2, 3].map((i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => setImg(i)}
+                className={`relative h-[84px] w-[84px] overflow-hidden rounded-[10px] border-[1.5px] bg-white ${img === i ? 'border-[var(--color-violet)]' : 'border-[var(--color-border)]'}`}
+                aria-label={`Image ${i + 1}`}
+              >
+                {product?.imageUrl ? (
+                  <Image src={product.imageUrl} alt="" fill sizes="84px" className="object-cover" style={i ? { transform: `scale(${1 + i * 0.35})`, objectPosition: ['center', 'left', 'right', 'bottom'][i] } : undefined} />
+                ) : (
+                  <Package size={22} className="m-auto text-[var(--color-muted)]" />
+                )}
+              </button>
+            ))}
+          </div>
+          <div className="relative aspect-square overflow-hidden rounded-[18px] border border-[var(--color-border)] bg-white">
             {product?.imageUrl ? (
               <Image
                 src={product.imageUrl}
                 alt={product?.name ?? ''}
                 fill
-                sizes="(max-width: 768px) 100vw, 50vw"
-                className="object-cover"
+                priority
+                sizes="(max-width: 1024px) 100vw, 50vw"
+                className="object-cover transition duration-500 hover:scale-150 hover:cursor-zoom-in"
+                style={img ? { transform: `scale(${1 + img * 0.35})`, objectPosition: ['center', 'left', 'right', 'bottom'][img] } : undefined}
               />
             ) : (
-              <div className="grid h-full place-items-center text-[var(--color-charcoal-light)]/30">
+              <div className="grid h-full place-items-center text-[var(--color-muted)]/30">
                 <Package size={48} />
               </div>
             )}
-          </div>
-          <div className="flex gap-3">
-            {[0, 1, 2].map((i) => (
-              <div
-                key={i}
-                className={`relative grid h-16 w-16 place-items-center overflow-hidden rounded-lg bg-[var(--color-cream-dark)] text-xl ${
-                  i === 0 ? 'ring-2 ring-[var(--color-terra)]' : ''
-                }`}
-              >
-                {i === 0 && product?.imageUrl ? (
-                  <Image src={product.imageUrl} alt="" fill sizes="64px" className="object-cover" />
-                ) : (
-                  <Package size={22} className="text-[var(--color-charcoal-light)]" />
-                )}
-              </div>
-            ))}
+            <div className="pointer-events-none absolute left-4 top-4 flex gap-1.5">
+              {discounted ? <span className="pill pill-yellow">−{savingPct}%</span> : null}
+            </div>
           </div>
         </div>
 
         {/* Details */}
-        <div className="space-y-5">
-          <div className="text-xs uppercase tracking-wide text-[var(--color-charcoal-light)]">
-            {product?.key}
-          </div>
-          <h1 className="font-display text-3xl leading-tight">{product?.name}</h1>
-          <div className="text-sm text-[#d9a441]">
-            <span className="inline-flex items-center gap-0.5 align-[-2px]">{[0, 1, 2, 3].map((i) => (<Star key={i} size={14} filled />))}<Star size={14} /></span> <span className="text-[var(--color-charcoal-light)]">(24 reviews)</span>
-          </div>
-
-          <FeatureGate capability="catalog.pdpInStore" title="In-store availability">
-            <StoreBadge storeName={storeName} storeActive={storeActive} notInStore={notInStore} />
-          </FeatureGate>
-
-          <FeatureGate capability="pricing.resolve" title="Price (scoped + discounts)">
-            <div>
-              <p className="text-2xl font-semibold">
-                {product?.price ? money(product.price) : '—'}
-                {product?.originalPrice ? (
-                  <span className="ml-2 text-base font-normal text-[var(--color-charcoal-light)] line-through">
-                    {money(product.originalPrice)}
-                  </span>
-                ) : null}
-              </p>
-              {recurringPriceLabel ? (
-                <p className="mt-0.5 text-sm text-[var(--color-sage)]">
-                  or{' '}
-                  {recurringOriginalLabel ? (
-                    <span className="text-[var(--color-charcoal-light)] line-through">{recurringOriginalLabel} </span>
-                  ) : null}
-                  {recurringPriceLabel} with Subscribe &amp; Save
-                </p>
-              ) : null}
-            </div>
-          </FeatureGate>
-
-          <FeatureGate capability="catalog.variantMatrix" title="Variant selection">
-            <VariantSelector productKey={product?.key} />
-          </FeatureGate>
-
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-[var(--color-charcoal-light)]">Qty</span>
-            <div className="flex items-center rounded-lg border border-[var(--color-border)] bg-white">
-              <button className="px-3 py-1.5">−</button>
-              <span className="px-3">1</span>
-              <button className="px-3 py-1.5">+</button>
-            </div>
-            <FeatureGate capability="inventory.read" title="Availability">
+        <div>
+          <p className="eyebrow">
+            Lifestyle &amp; Home · <span className="font-mono tracking-normal">{sku}</span>
+          </p>
+          <h1 className="mt-2 text-[38px]">{product?.name}</h1>
+          <div className="mt-2.5 flex flex-wrap items-center gap-3.5 text-sm text-[var(--color-muted)]">
+            <span className="inline-flex items-center gap-1.5">
+              <span className="stars inline-flex gap-px">{[0, 1, 2, 3].map((i) => (<Star key={i} size={14} filled />))}<Star size={14} /></span>
+              4.1 <span>(137)</span>
+            </span>
+            <a href="#reviews" className="font-semibold text-[var(--color-violet-dark)]">Read reviews</a>
+            <span>·</span>
+            <FeatureGate capability="inventory.read" title="Availability" className="inline-block">
               <InventoryBadge sku={product?.key ?? slug} />
             </FeatureGate>
           </div>
 
-          {subscriptionsEnabled ? (
-          <FeatureGate capability="cart.recurring" title="Subscribe & Save">
-            <fieldset className="rounded-xl border border-[var(--color-border)] bg-white p-3">
-              <legend className="px-1 text-xs font-medium text-[var(--color-charcoal-light)]">Purchase options</legend>
-              <label className="flex cursor-pointer items-center gap-2 py-1 text-sm">
-                <input type="radio" name="purchase" checked={!subscribe} onChange={() => setSubscribe(false)} />
-                One-time purchase
-              </label>
-              <label className="flex cursor-pointer items-center gap-2 py-1 text-sm">
-                <input type="radio" name="purchase" checked={subscribe} onChange={() => setSubscribe(true)} />
-                <span>
-                  Subscribe &amp; Save
-                  {recurringPriceLabel ? (
-                    <>
-                      {' — '}
-                      {recurringOriginalLabel ? (
-                        <span className="text-[var(--color-charcoal-light)] line-through">{recurringOriginalLabel} </span>
-                      ) : null}
-                      <strong>{recurringPriceLabel}</strong>
-                    </>
-                  ) : null}
-                  {' '}· deliver every month, cancel anytime
-                </span>
-              </label>
-            </fieldset>
+          <div className="mt-3">
+            <FeatureGate capability="catalog.pdpInStore" title="In-store availability">
+              <StoreBadge storeName={storeName} storeActive={storeActive} notInStore={notInStore} />
+            </FeatureGate>
+          </div>
+
+          <FeatureGate capability="pricing.resolve" title="Price" className="mt-5">
+            <div>
+              <div className="flex flex-wrap items-baseline gap-3">
+                <span className="font-display text-[34px] font-bold">{product?.price ? money(product.price) : '—'}</span>
+                {product?.originalPrice ? <s className="text-lg text-[var(--color-muted)]">{money(product.originalPrice)}</s> : null}
+                {discounted ? <span className="pill pill-yellow">Save {savingPct}%</span> : null}
+              </div>
+              <p className="mt-1 text-[13px] text-[var(--color-muted)]">
+                Price includes tax for your country
+                {recurringPriceLabel ? (
+                  <> · or <span className="font-semibold text-[var(--color-teal-dark)]">{recurringPriceLabel}</span> with Subscribe &amp; Save</>
+                ) : null}
+              </p>
+            </div>
           </FeatureGate>
+
+          <FeatureGate capability="catalog.variantMatrix" title="Options" className="mt-6">
+            <VariantSelector productKey={product?.key} />
+          </FeatureGate>
+
+          {subscriptionsEnabled ? (
+            <FeatureGate capability="cart.recurring" title="Subscribe & Save" className="mt-6">
+              <div className="overflow-hidden rounded-[14px] border-[1.5px] border-[var(--color-border)]">
+                <label className={`flex cursor-pointer items-start gap-3 px-4 py-4 ${!subscribe ? 'bg-[var(--color-violet-50)]' : ''}`}>
+                  <input type="radio" name="purchase" checked={!subscribe} onChange={() => setSubscribe(false)} className="mt-1 h-[18px] w-[18px] accent-[var(--color-violet)]" />
+                  <span className="flex-1">
+                    <b className="block font-semibold">One-time purchase</b>
+                    <small className="text-[13px] text-[var(--color-muted)]">Ships in 1–2 business days</small>
+                  </span>
+                  <span className="font-bold">{product?.price ? money(product.price) : '—'}</span>
+                </label>
+                <label className={`flex cursor-pointer items-start gap-3 border-t-[1.5px] border-[var(--color-border)] px-4 py-4 ${subscribe ? 'bg-[var(--color-violet-50)]' : ''}`}>
+                  <input type="radio" name="purchase" checked={subscribe} onChange={() => setSubscribe(true)} className="mt-1 h-[18px] w-[18px] accent-[var(--color-violet)]" />
+                  <span className="flex-1">
+                    <b className="block font-semibold">Subscribe &amp; Save</b>
+                    <small className="text-[13px] text-[var(--color-muted)]">Delivered every month · skip or cancel anytime · price locked</small>
+                  </span>
+                  <span className="text-right font-bold">
+                    {recurringOriginalLabel ? <s className="mr-1.5 font-normal text-[var(--color-muted)]">{recurringOriginalLabel}</s> : null}
+                    {recurringPriceLabel ?? '—'}
+                  </span>
+                </label>
+              </div>
+            </FeatureGate>
           ) : (
-            <p id="cap-ext.customObjects" data-capability="ext.customObjects" className="rounded-xl border border-dashed border-[var(--color-border)] bg-white p-3 text-xs text-[var(--color-charcoal-light)]">
-              Subscribe &amp; Save is currently unavailable — switched off by ops (feature flag <code>subscriptionsEnabled</code>).
+            <p id="cap-ext.customObjects" data-capability="ext.customObjects" className="surface mt-6 border-dashed p-3 text-xs text-[var(--color-muted)]">
+              Subscribe &amp; Save is currently unavailable.
             </p>
           )}
 
-          <div className="flex items-center gap-3 pt-1">
+          <FeatureGate capability="cart.channel" title="Delivery or pick up" className="mt-5">
+            <FulfilmentSelect id="pdp-fulfilment" value={pickup} onChange={setPickup} />
+          </FeatureGate>
+
+          <div className="mt-6 flex items-center gap-3">
+            <div className="inline-flex h-[54px] items-center rounded-full border-[1.5px] border-[var(--color-border)] bg-white">
+              <button type="button" onClick={() => setQty((q) => Math.max(1, q - 1))} className="grid h-full w-12 place-items-center" aria-label="Decrease quantity"><Minus size={16} /></button>
+              <span className="min-w-9 text-center font-semibold">{qty}</span>
+              <button type="button" onClick={() => setQty((q) => q + 1)} className="grid h-full w-12 place-items-center" aria-label="Increase quantity"><Plus size={16} /></button>
+            </div>
             <div className="flex-1">
-              <AddToCartButton full productKey={product?.key ?? slug} recurring={subscribe && subscriptionsEnabled} recurrencePolicy="monthly" />
+              <AddToCartButton
+                full
+                productKey={product?.key ?? slug}
+                quantity={qty}
+                recurring={subscribe && subscriptionsEnabled}
+                recurrencePolicy="monthly"
+                fulfilment={pickup ? { supplyChannelKey: pickup } : undefined}
+                label={ctaTotal ? `${subscribe ? 'Subscribe' : 'Add to bag'} · ${ctaTotal}` : undefined}
+              />
             </div>
             <WishlistButton productKey={product?.key ?? slug} />
           </div>
 
-          <FeatureGate capability="catalog.bundles" title="Bundle contents">
+          <div className="mt-6 grid grid-cols-2 gap-x-5 gap-y-2.5 text-[13.5px] text-[var(--color-muted)]">
+            <span className="flex items-center gap-2.5"><RotateCcw size={17} className="shrink-0 text-[var(--color-teal-dark)]" /> 30-day returns, free label</span>
+            <span className="flex items-center gap-2.5"><ShieldCheck size={17} className="shrink-0 text-[var(--color-teal-dark)]" /> 2-year guarantee</span>
+            <span className="flex items-center gap-2.5"><Leaf size={17} className="shrink-0 text-[var(--color-teal-dark)]" /> FSC-certified wood, low-VOC finish</span>
+            <span className="flex items-center gap-2.5"><Gift size={17} className="shrink-0 text-[var(--color-teal-dark)]" /> Gift message at checkout</span>
+          </div>
+
+          <FeatureGate capability="catalog.bundles" title="Bundle contents" className="mt-6">
             <BundleContents productKey={product?.key} />
           </FeatureGate>
+
+          <div className="mt-7 border-t border-[var(--color-border)]">
+            <Accordion title="Details" open>
+              {product?.name} is made in small batches from solid oak and natural linen. Designed in Copenhagen, assembled in
+              Portugal, finished by hand. Each piece carries slight variations in grain and tone.
+            </Accordion>
+            <Accordion title="Dimensions & materials">
+              <table className="w-full text-sm">
+                <tbody>
+                  {[['Width', '82 cm'], ['Depth', '88 cm'], ['Height', '74 cm'], ['Frame', 'Solid oak, FSC'], ['Upholstery', '100% linen, removable cover']].map(([k, v]) => (
+                    <tr key={k} className="border-t border-[var(--color-border)]"><td className="w-2/5 py-1.5 text-[var(--color-ink)]">{k}</td><td className="py-1.5">{v}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+            </Accordion>
+            <Accordion title="Delivery & returns">
+              Standard delivery 3–5 business days, free over €50. Express 1–2 days. Pickup in store ready within 2 hours.
+              Returns are free within 30 days — print the label from your account.
+            </Accordion>
+            <Accordion title="Care">
+              Vacuum weekly with an upholstery attachment. Spot-clean with a damp cloth. Covers are machine-washable at 30°C.
+            </Accordion>
+          </div>
         </div>
       </div>
+
+      <RelatedProducts excludeKey={product?.key} />
+
+      <section id="reviews" className="mt-16 grid gap-10 lg:grid-cols-[300px_1fr]">
+        <div className="surface p-6">
+          <p className="eyebrow">Reviews</p>
+          <div className="mt-1 font-display text-[52px] font-bold leading-none">4.1</div>
+          <span className="stars inline-flex gap-px">{[0, 1, 2, 3].map((i) => (<Star key={i} size={14} filled />))}<Star size={14} /></span>
+          <span className="ml-2 text-sm text-[var(--color-muted)]">137 reviews</span>
+          <div className="mt-3 space-y-2">
+            {[[5, 68], [4, 22], [3, 7], [2, 2], [1, 1]].map(([s, pct]) => (
+              <div key={s} className="flex items-center gap-2.5 text-[13px] text-[var(--color-muted)]">
+                {s}★
+                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[var(--color-earth-dark)]"><i className="block h-full bg-[var(--color-yellow)]" style={{ width: `${pct}%` }} /></div>
+                {pct}%
+              </div>
+            ))}
+          </div>
+          <button type="button" className="btn btn-ghost btn-sm mt-5 w-full">Write a review</button>
+        </div>
+        <div>
+          {[
+            ['Exactly as pictured, softer than expected', 'Maya R.', '2 weeks ago', 'The linen is lovely and the frame feels solid. Delivery crew brought it upstairs without being asked.'],
+            ['Pickup was effortless', 'Jonas K.', '1 month ago', 'Ordered at lunch, picked up on the way home. Fits our small flat better than I hoped.'],
+            ['Good, with one caveat', 'Priya S.', '2 months ago', 'Beautiful piece. The cushion took a week to settle. Customer care sent a care guide proactively, which was a nice touch.'],
+          ].map(([t, who, when, body]) => (
+            <article key={t} className="border-b border-[var(--color-border)] py-5">
+              <div className="flex items-center gap-2">
+                <span className="stars inline-flex gap-px">{[0, 1, 2, 3, 4].map((i) => (<Star key={i} size={13} filled />))}</span>
+                <span className="text-xs font-semibold text-[var(--color-teal-dark)]">Verified buyer</span>
+              </div>
+              <h3 className="mt-2 text-base">{t}</h3>
+              <p className="mt-1.5 text-[14.5px] text-[var(--color-muted)]">{body}</p>
+              <small className="mt-2 block text-[var(--color-muted)]">{who} · {when}</small>
+            </article>
+          ))}
+        </div>
+      </section>
     </div>
+  );
+}
+
+function Accordion({ title, open, children }: { title: string; open?: boolean; children: React.ReactNode }) {
+  return (
+    <details open={open} className="group border-b border-[var(--color-border)]">
+      <summary className="flex cursor-pointer list-none items-center justify-between py-4 font-semibold [&::-webkit-details-marker]:hidden">
+        {title}
+        <Plus size={18} className="text-[var(--color-muted)] transition group-open:rotate-45" />
+      </summary>
+      <div className="pb-4 text-[14.5px] leading-relaxed text-[var(--color-muted)]">{children}</div>
+    </details>
   );
 }
 
@@ -238,20 +344,20 @@ function StoreBadge({
 }) {
   if (!storeActive) {
     return (
-      <span className="inline-flex items-center gap-2 rounded-full bg-[var(--color-cream-dark)] px-3 py-1 text-xs text-[var(--color-charcoal-light)]">
+      <span className="pill pill-earth !h-7 !text-xs !font-medium">
         <Tag size={13} />Select a store for in-store availability
       </span>
     );
   }
   if (notInStore) {
     return (
-      <span className="inline-flex items-center gap-2 rounded-full bg-[var(--color-cream-dark)] px-3 py-1 text-xs text-[var(--color-charcoal)]">
+      <span className="pill pill-earth !h-7 !text-xs !font-medium text-[var(--color-ink)]">
         <Tag size={13} />Not available in {storeName ?? 'this store'}
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-2 rounded-full bg-[var(--color-sage)]/15 px-3 py-1 text-xs text-[var(--color-charcoal)]">
+    <span className="pill pill-teal !h-7 !text-xs">
       <Tag size={13} />Available at {storeName ?? 'your store'}
     </span>
   );
@@ -262,15 +368,15 @@ function InventoryBadge({ sku }: { sku: string }) {
   const onStock = data?.data?.isOnStock;
   return (
     <span className="inline-flex items-center gap-2 text-sm">
-      <span className={`h-2 w-2 rounded-full ${onStock ? 'bg-[var(--color-sage)]' : 'bg-[var(--color-charcoal-light)]'}`} />
-      {onStock ? 'In stock' : 'Availability'}
+      <span className={`stock-dot ${onStock ? '' : '!bg-[var(--color-earth-dark)]'}`} />
+      {onStock ? 'In stock · ships in 1–2 days' : 'Availability'}
     </span>
   );
 }
 
 export function ProductDetail({ slug }: { slug: string }) {
   return (
-    <FeatureGate capability="catalog.pdp" title="Product detail">
+    <FeatureGate capability="catalog.pdp" title="Product">
       <ProductDetailInner slug={slug} />
     </FeatureGate>
   );

@@ -1,3 +1,4 @@
+import { track } from '../lib/track';
 import { ModuleGroup } from '../api/bff';
 import { flattenTasks, pct } from '../lib/ui';
 import { Search, ExternalLink, LayoutDashboard } from '../lib/icons';
@@ -98,7 +99,7 @@ export function Header({
           <span
             className={`h-2 w-2 rounded-full ${connected ? 'bg-[var(--color-teal)]' : 'bg-[var(--color-red)]'}`}
           />
-          BFF {connected ? 'online' : 'offline'} · :8081
+          {track().backendName} {connected ? 'online' : 'offline'} · {track().backendLocation}
         </span>
         {view === 'participant' && participantName ? (
           <span className="hidden text-xs text-[var(--color-text-secondary)] lg:inline">{participantName}</span>

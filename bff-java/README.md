@@ -36,6 +36,12 @@ service maps them to your `domain` models.
 - `customer` — **your Session-5 tasks**: sign-up, sign-in, the guest → customer cart merge, the address
   book, password change / reset, the customer-group price context and `GET /api/session` (profile, email
   verification and the wishlist carry-over ship pre-built).
+- `order` — **your Session-6 tasks**: the Checkout Session with your own order number, reading the order and
+  its payment ledger, capture, the guarded order state machine, order history, the subscription born from
+  Subscribe & Save (readiness and the ledger ship pre-built).
+- `extensibility` — **your Session-7 tasks**: Custom Fields (gift message), Custom Objects (feature flags),
+  Messages (order timeline) + the idempotent consumer, the API Extension registration and its cart-rules
+  handler, the Import API price feed, and the extensibility decision.
 - `training` — task/progress tracking (powers Commerce Canvas). Don't edit.
 - `app` — the aggregator; runs the full BFF on **:8081**.
 
@@ -109,5 +115,11 @@ when compiled classes change — so you never run `mvn clean install` after a ta
   two-step reset, the customer-group price context, and `GET /api/session` — identity lives in the BFF
   session, never in a request parameter. Some tasks are `application`-layer logic (T2), not just one SDK
   call — the Canvas card says which.
+- **Session-6 tasks (checkout):** create the Checkout Session carrying your order number, read the order
+  Checkout wrote and its payment ledger, capture at fulfilment, the order state machine, order history and
+  the subscription — the storefront's checkout wizard pays through commercetools Checkout's widget.
+- **Session-7 tasks (beyond the BFF):** a Custom Field and a Custom Object, Messages and a consumer that
+  survives replays, an API Extension the platform calls before it saves your cart (your BFF behind a
+  `cloudflared` quick tunnel — see `.env.example`), and an Import API price feed.
 
 Stuck? The **`solution`** branch has the reference implementation — try it yourself first.

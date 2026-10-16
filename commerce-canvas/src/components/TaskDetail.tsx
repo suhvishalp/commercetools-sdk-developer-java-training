@@ -1,3 +1,4 @@
+import { track } from '../lib/track';
 import { useState } from 'react';
 import { TaskItem, QueryParam, buildQuery, endpointParams, resolveEndpoint } from '../api/bff';
 import { methodColor, taskRef, tierClasses } from '../lib/ui';
@@ -122,6 +123,8 @@ function seedBody(task: TaskItem): string {
     case 'cart.stockGate':
       return j({ inventoryMode: 'ReserveOnOrder' });
     case 'cart.address':
+      // 4.7 — setting the address also selects the default shipping method (4.8's read); the response
+      // now shows shippingAddress + shippingMethod, and GET /api/cart/shipping-methods lists the options.
       return j({
         country: 'DE',
         firstName: 'Alex',
@@ -195,6 +198,28 @@ function seedBody(task: TaskItem): string {
     default:
       return '';
   }
+}
+
+/**
+ * Where a capability lives in the storefront, so "View in Storefront" lands on the page that shows it
+ * (the storefront highlights the matching `cap-<capability>` block on any page via ?focus=). Anything
+ * unmapped opens the home page, where the catalogue / discovery blocks and the status board live.
+ */
+function storefrontPathFor(capability: string): string {
+  if (capability === 'customer.register') return '/register';
+  if (capability === 'customer.login' || capability === 'customer.cartMerge' || capability === 'customer.password') return '/login';
+  if (capability === 'customer.session') return '/';
+  if (capability.startsWith('customer.')) return '/account';
+  if (capability === 'order.history') return '/account';
+  if (capability === 'order.create' || capability === 'order.ledger' || capability === 'order.recurring' || capability === 'ext.messages') return '/checkout/confirmation';
+  if (capability.startsWith('order.') || capability === 'ext.customFields') return '/checkout';
+  if (capability === 'cart.shoppingList' || capability === 'ext.cartRules' || capability.startsWith('cart.')) return '/cart';
+  if (capability === 'catalog.pdp' || capability === 'catalog.variantMatrix' || capability === 'catalog.bundles'
+      || capability === 'catalog.pdpInStore' || capability === 'cart.recurring' || capability === 'ext.customObjects' || capability === 'inventory.read') {
+    return '/products/charlie-armchair';
+  }
+  if (capability.startsWith('search.')) return '/products';
+  return '/';
 }
 
 /** Main panel: full detail of the selected task + Try It. */
@@ -275,7 +300,7 @@ export function TaskDetail({
             {task.description
               ? task.description
               : task.tier === 'T1'
-                ? 'Implement exactly one commercetools SDK call in the repository, then validate it and explain it back. AI accelerates the plumbing; you verify it.'
+                ? track().t1Framing
                 : "You own the design decision and the logic here; AI assists — there's a defensible answer to reach and defend, not a single generated one."}
           </p>
         </div>
@@ -382,6 +407,18 @@ export function TaskDetail({
         </div>
       </Section>
 
+      {task.capability === 'customer.register' || task.capability === 'customer.login' || task.capability === 'customer.cartMerge' ? (
+        <div className="flex items-start gap-2 rounded-lg border border-[var(--color-teal)]/40 bg-[var(--color-teal)]/10 p-3 text-sm text-[var(--color-text-secondary)]">
+          <Info size={16} className="mt-0.5 shrink-0 text-[var(--color-teal-light)]" />
+          <span>
+            Sign-up / sign-in hand over the <em>session's</em> guest basket. To see it happen: create a cart (4.1) and add
+            items first, and make sure the session is not already signed in (<code>GET /api/session</code> →{' '}
+            <code>POST /api/session/sign-out</code> if it is) — a signed-in session has no guest basket, so{' '}
+            <code>activeCartId</code> comes back <code>null</code>. The response's <code>note</code> says what happened.
+          </span>
+        </div>
+      ) : null}
+
       {takesBody ? (
         <Section title="Request body">
           <p className="mb-2 text-xs leading-relaxed text-[var(--color-text-muted)]">
@@ -407,7 +444,7 @@ export function TaskDetail({
           title={missing.length > 0 ? `Enter ${missing.join(', ')} first` : undefined}
           className="inline-flex items-center gap-2 rounded-md bg-[var(--color-violet)] px-4 py-2 font-medium text-white hover:bg-[var(--color-violet-light)] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {loading ? 'Calling BFF…' : 'Try It'}
+          {loading ? `Calling ${track().backendName}…` : 'Try It'}
         </button>
         {missing.length > 0 ? (
           <span className="text-xs text-[var(--color-yellow)]">
@@ -415,11 +452,11 @@ export function TaskDetail({
           </span>
         ) : (
           <span className="text-xs text-[var(--color-text-muted)]">
-            Sends <code style={{ color: mc }}>{task.httpMethod}</code> <code>{resolved}</code> to your BFF
+            Sends <code style={{ color: mc }}>{task.httpMethod}</code> <code>{resolved}</code> to {track().tryItTarget}
           </span>
         )}
         <a
-          href={`${storefrontUrl}/?focus=${encodeURIComponent(task.capability)}`}
+          href={`${storefrontUrl}${storefrontPathFor(task.capability)}?focus=${encodeURIComponent(task.capability)}`}
           target="_blank"
           rel="noreferrer"
           className="ml-auto rounded-md border border-[var(--color-brd-light)] px-3 py-1.5 text-sm hover:border-[var(--color-violet)]"
@@ -432,8 +469,8 @@ export function TaskDetail({
         <div className="flex items-start gap-3 rounded-lg border border-[var(--color-yellow)]/30 bg-[var(--color-yellow)]/10 p-4 text-sm">
           <Info size={16} className="mt-0.5 shrink-0 text-[var(--color-yellow)]" />
           <div className="text-[var(--color-text-secondary)]">
-            <strong className="text-[var(--color-text)]">Not implemented yet.</strong> Implement the one
-            infrastructure adapter method for this task, then <em>Try It</em> — a <code>2xx</code> marks it
+            <strong className="text-[var(--color-text)]">Not implemented yet.</strong> {track().implementHint},
+            then <em>Try It</em> — a <code>2xx</code> marks it
             complete and unlocks <code>{task.capability}</code> in the storefront.
           </div>
         </div>

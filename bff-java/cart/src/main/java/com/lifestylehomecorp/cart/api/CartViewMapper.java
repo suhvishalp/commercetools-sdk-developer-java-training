@@ -1,5 +1,6 @@
 package com.lifestylehomecorp.cart.api;
 
+import com.lifestylehomecorp.cart.api.dto.CartAddressView;
 import com.lifestylehomecorp.cart.api.dto.CartLineView;
 import com.lifestylehomecorp.cart.api.dto.CartView;
 import com.lifestylehomecorp.cart.api.dto.MoneyView;
@@ -51,6 +52,12 @@ public final class CartViewMapper {
                 MoneyView.from(c.tax()),
                 MoneyView.from(c.total()),
                 c.shippingMethod(),
+                c.shippingMethodId(),
+                CartAddressView.from(c.shippingAddress()),
+                CartAddressView.from(c.billingAddress()),
+                c.customerId(),
+                c.customerEmail(),
+                c.owner(),
                 c.discountCodes());
     }
 

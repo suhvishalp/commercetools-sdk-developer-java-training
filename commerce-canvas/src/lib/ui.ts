@@ -1,4 +1,5 @@
 import { ModuleGroup, TaskItem } from '../api/bff';
+import { track } from './track';
 
 /**
  * The course's session codenames + subtitles — the sidebar and trainer dashboard show these next to
@@ -20,7 +21,7 @@ const SESSION_TITLES: Record<string, { codename: string; subtitle: string }> = {
 
 /** Codename + subtitle for a session label; both empty for a label the course doesn't know. */
 export function sessionTitle(session: string): { codename: string; subtitle: string } {
-  return SESSION_TITLES[session] ?? { codename: '', subtitle: '' };
+  return track().sessionTitles?.[session] ?? SESSION_TITLES[session] ?? { codename: '', subtitle: '' };
 }
 
 /** Tier accent: T1 = ct Violet (AI-accelerated), T2 = ct Yellow (human-in-the-loop).

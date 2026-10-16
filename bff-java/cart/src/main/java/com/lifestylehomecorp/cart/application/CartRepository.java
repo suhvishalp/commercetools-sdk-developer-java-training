@@ -26,4 +26,13 @@ public interface CartRepository {
 
     /** 4.9 — remove a previously applied discount code by its id. */
     Cart removeDiscountCode(String cartId, Long version, String discountCodeId);
+
+    /**
+     * 4.12 (pre-built) — the customer's Active carts, most recently modified first: the FIRST is the one
+     * the platform treats as active (sign-in merges into it, the storefront should show it).
+     */
+    List<Cart> findActiveCartsOfCustomer(String customerId);
+
+    /** 4.12 (pre-built) — the guest's Active carts (by anonymousId), most recently modified first. */
+    List<Cart> findActiveCartsOfGuest(String anonymousId);
 }

@@ -1,3 +1,4 @@
+import { track } from '../lib/track';
 import { TryResult } from '../api/bff';
 import { statusTone } from '../lib/ui';
 
@@ -13,7 +14,7 @@ export interface InspectorState {
 /** HTTP Inspector: the last "Try It" call — method + path, status pill, and the JSON body. */
 export function Inspector({ state, loading }: { state: InspectorState | null; loading: boolean }) {
   if (loading) {
-    return <div className="p-4 text-sm text-[var(--color-text-muted)]">Calling BFF…</div>;
+    return <div className="p-4 text-sm text-[var(--color-text-muted)]">Calling {track().backendName}…</div>;
   }
   if (!state) {
     return (
@@ -34,12 +35,12 @@ export function Inspector({ state, loading }: { state: InspectorState | null; lo
       </div>
       {state.result.status === 501 ? (
         <p className="rounded-md bg-[var(--color-yellow)]/10 px-3 py-2 text-xs text-[var(--color-yellow)]">
-          Pending — implement this task’s infrastructure method, then Try It again.
+          Pending — {track().implementHint.charAt(0).toLowerCase() + track().implementHint.slice(1)}, then Try It again.
         </p>
       ) : null}
       {state.result.status === 0 ? (
         <p className="rounded-md bg-[var(--color-bg-card)] px-3 py-2 text-xs text-[var(--color-text-muted)]">
-          No response — is your BFF running on :8081?
+          No response — is {track().tryItTarget} running on {track().backendLocation}?
         </p>
       ) : null}
       {state.requestBody && state.requestBody.trim() !== '' ? (

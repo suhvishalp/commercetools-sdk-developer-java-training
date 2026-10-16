@@ -6,6 +6,11 @@ import { NextRequest } from 'next/server';
  * Status codes are passed through unchanged — importantly, a BFF 501 stays a 501 so the
  * storefront can show a locked state. Works identically for the Java or the JS BFF.
  *
+ * The shopper's session: the BFF keeps one session per browser behind ONE opaque cookie, `lhc_session`
+ * (HttpOnly, SameSite=Lax). This proxy forwards only that cookie to the BFF and passes the BFF's
+ * Set-Cookie back, so the browser holds the cookie for this origin and nothing it holds can call
+ * commercetools. Other cookies on the origin are never forwarded.
+ *
  * SSRF guard: BFF_URL is a fixed, server-side base. The user-controlled catch-all path is
  * validated segment-by-segment (safe characters only, no traversal) and the resolved URL is
  * confined to the configured BFF origin + base path before any request is made — so a crafted
@@ -18,6 +23,9 @@ const BFF_BASE = new URL(BFF_URL.endsWith('/') ? BFF_URL : `${BFF_URL}/`);
 // Allow only characters valid in commercetools keys/slugs ([-_~.a-zA-Z0-9]). This whitelist
 // blocks anything that could change the scheme/host or encode a path separator.
 const SAFE_SEGMENT = /^[A-Za-z0-9._~-]+$/;
+
+/** The BFF's session cookie — the only cookie forwarded (see platform SessionCookieConfig in the BFF). */
+const SESSION_COOKIE = 'lhc_session';
 
 /** Resolve the forwarding target, confined to the BFF origin + base path; null if unsafe. */
 function safeTarget(path: string[], search: string): URL | null {
@@ -48,20 +56,18 @@ async function forward(req: NextRequest, path: string[]): Promise<Response> {
     );
   }
   try {
-    const init: RequestInit = {
-      method: req.method,
-      headers: { accept: 'application/json', 'content-type': 'application/json' },
-      cache: 'no-store',
-    };
+    const headers: Record<string, string> = { accept: 'application/json', 'content-type': 'application/json' };
+    const session = req.cookies.get(SESSION_COOKIE);
+    if (session) headers.cookie = `${SESSION_COOKIE}=${session.value}`;
+    const init: RequestInit = { method: req.method, headers, cache: 'no-store' };
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       init.body = await req.text();
     }
     const res = await fetch(target, init);
     const body = await res.text();
-    return new Response(body, {
-      status: res.status,
-      headers: { 'content-type': res.headers.get('content-type') ?? 'application/json' },
-    });
+    const out = new Headers({ 'content-type': res.headers.get('content-type') ?? 'application/json' });
+    for (const cookie of res.headers.getSetCookie()) out.append('set-cookie', cookie);
+    return new Response(body, { status: res.status, headers: out });
   } catch {
     return new Response(
       JSON.stringify({ statusCode: 502, message: 'Training BFF is unreachable.' }),
@@ -80,6 +86,11 @@ export async function GET(req: NextRequest, ctx: Ctx): Promise<Response> {
 }
 
 export async function POST(req: NextRequest, ctx: Ctx): Promise<Response> {
+  const { path } = await ctx.params;
+  return forward(req, path);
+}
+
+export async function PUT(req: NextRequest, ctx: Ctx): Promise<Response> {
   const { path } = await ctx.params;
   return forward(req, path);
 }

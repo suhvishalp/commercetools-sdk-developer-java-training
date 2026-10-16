@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Lock, ChevronDown } from '@/components/ui/icons';
+import { useEffect, useRef, useState } from 'react';
+import { Lock, ChevronDown, MapPin } from '@/components/ui/icons';
 import useSWR from 'swr';
 import { bffGet } from '@/lib/bff/client';
 import { useCapability } from '@/context/capabilities-context';
@@ -17,17 +17,27 @@ interface StoreView {
 }
 
 /**
- * Header "Stores" list, gated on distribution.stores (Task 1.2). Locked → dimmed pill that opens the
- * unlock dialog. Unlocked → lists the real stores from GET /api/stores. This is the visible storefront
- * payoff for the "List Stores" task.
+ * Header store picker (the "your store" every omnichannel shop has), gated on distribution.stores
+ * (Task 1.2). Locked → dimmed pill that opens the unlock dialog. Unlocked → lists the real stores from
+ * GET /api/stores. This is the visible storefront payoff for the "List Stores" task.
  */
 export function StoreSelector() {
   const { loading, unlocked, meta } = useCapability('distribution.stores');
   const { open } = useUnlockDialog();
-  const { selectStore, storeName } = usePreferences();
+  const { selectStore, storeName, storeKey } = usePreferences();
   const [openList, setOpenList] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
   // Only fetch once the task is implemented.
   const { data } = useSWR(unlocked ? 'stores' : null, (p) => bffGet<StoreView[]>(p));
+
+  useEffect(() => {
+    if (!openList) return;
+    const onDoc = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpenList(false);
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [openList]);
 
   if (loading) return null;
 
@@ -35,10 +45,10 @@ export function StoreSelector() {
     return (
       <button
         onClick={() => open(meta)}
-        className="rounded-md border border-dashed border-[var(--color-border)] px-2 py-1 text-sm text-[var(--color-charcoal-light)]"
-        title={`Unlocks in ${meta.session} — ${meta.sessionName}`}
+        className="hbtn hidden text-[var(--color-unlock-dark)] lg:inline-flex"
+        title="Coming soon"
       >
-        <Lock size={13} className="mr-1 inline align-[-2px]" />Stores
+        <MapPin size={18} />Stores<Lock size={11} />
       </button>
     );
   }
@@ -46,17 +56,17 @@ export function StoreSelector() {
   const stores = data?.ok ? (data.data ?? []) : [];
 
   return (
-    <div className="relative">
-      <button
-        onClick={() => setOpenList((o) => !o)}
-        className="rounded-md border border-[var(--color-border)] bg-white px-2 py-1 text-sm hover:border-[var(--color-terra)]"
-      >
-        {storeName ?? 'Stores'}<ChevronDown size={13} className="ml-1 inline align-[-2px]" />
+    <div className="relative hidden lg:block" ref={ref}>
+      <button onClick={() => setOpenList((o) => !o)} className="hbtn" aria-haspopup="listbox" aria-expanded={openList}>
+        <MapPin size={18} />
+        <span className="max-w-[180px] truncate">{storeKey ? storeName : 'Choose a store'}</span>
+        <ChevronDown size={13} />
       </button>
       {openList ? (
-        <div className="absolute right-0 z-30 mt-1 w-64 rounded-lg border border-[var(--color-border)] bg-white p-2 shadow-lg">
+        <div className="absolute right-0 z-30 mt-1 w-72 rounded-2xl border border-[var(--color-border)] bg-white p-2 shadow-[var(--shadow-float)]">
+          <p className="eyebrow px-2 pb-2 pt-1">Your store</p>
           {stores.length === 0 ? (
-            <p className="px-2 py-1 text-sm text-[var(--color-charcoal-light)]">No stores configured.</p>
+            <p className="px-2 py-1 text-sm text-[var(--color-muted)]">No stores configured.</p>
           ) : (
             stores.map((s) => (
               <button
@@ -65,12 +75,12 @@ export function StoreSelector() {
                   selectStore(s);
                   setOpenList(false);
                 }}
-                className={`block w-full rounded-md px-2 py-1.5 text-left hover:bg-[var(--color-cream-dark)] ${
-                  storeName === s.name ? 'bg-[var(--color-cream-dark)]' : ''
+                className={`block w-full rounded-xl px-3 py-2 text-left hover:bg-[var(--color-earth)] ${
+                  storeKey === s.key ? 'bg-[var(--color-violet-50)]' : ''
                 }`}
               >
                 <div className="text-sm font-medium">{s.name}</div>
-                <div className="text-xs text-[var(--color-charcoal-light)]">
+                <div className="text-xs text-[var(--color-muted)]">
                   {s.countries.join(', ') || '—'} · {s.languages.join(', ') || '—'}
                 </div>
               </button>

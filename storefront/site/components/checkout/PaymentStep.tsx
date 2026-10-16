@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useLocale } from 'next-intl';
 import { bffPost } from '@/lib/bff/client';
 import { CheckoutStartView } from '@/lib/order-types';
+import { ShieldCheck } from '@/components/ui/icons';
 
 /**
  * The payment step — the only browser-side Checkout code in the course (Session 6, pre-built).
@@ -28,8 +29,8 @@ export function PaymentStep() {
       if (!res.ok || !res.data) {
         setError(
           res.status === 501
-            ? 'The Checkout Session task (6.1) is not implemented yet.'
-            : `Could not start the payment (HTTP ${res.status}).`,
+            ? 'Payment isn’t available right now. Please try again shortly.'
+            : 'We couldn’t start the payment. Please try again.',
         );
         return;
       }
@@ -48,25 +49,32 @@ export function PaymentStep() {
           }
         },
         onError: (msg: { code?: string; payload?: unknown }) => {
-          setError(String(msg.code ?? 'payment_error'));
+          void msg; setError('The payment could not be completed. Please check your details and try again.');
         },
       });
     })();
   }, [locale]);
 
   return (
-    <div className="space-y-3">
-      {start ? (
-        <p className="text-sm text-[var(--color-charcoal-light)]">
-          Order <span className="font-mono font-semibold text-[var(--color-charcoal)]">{start.orderNumber}</span> · paying via
-          commercetools Checkout ({start.applicationKey})
-        </p>
-      ) : !error ? (
-        <p className="text-sm text-[var(--color-charcoal-light)]">Starting the payment…</p>
-      ) : null}
+    <div className="space-y-3 rounded-[14px] border-[1.5px] border-[var(--color-border)] bg-[var(--color-cream)] p-5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {start ? (
+          <p className="text-sm text-[var(--color-muted)]">
+            Order <span className="font-mono font-semibold text-[var(--color-ink)]">{start.orderNumber}</span> · secure payment
+          </p>
+        ) : !error ? (
+          <p className="text-sm text-[var(--color-muted)]">Starting the payment…</p>
+        ) : <span />}
+        <span className="flex gap-1.5">
+          {['VISA', 'MC', 'AMEX', 'DISCOVER'].map((b) => (
+            <span key={b} className="inline-flex h-6 items-center rounded-md border border-[var(--color-border)] bg-white px-2 text-[10px] font-bold">{b}</span>
+          ))}
+        </span>
+      </div>
       {/* Required mount point — without it the widget takes over the whole page. */}
       <div data-ctc />
-      {error ? <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
+      {error ? <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
+      <p className="flex items-center gap-2 text-xs text-[var(--color-muted)]"><ShieldCheck size={14} /> Card details are collected by commercetools Checkout. This shop never sees them.</p>
     </div>
   );
 }

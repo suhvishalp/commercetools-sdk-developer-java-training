@@ -11,14 +11,14 @@ import { countryLabel } from '@/lib/utils';
 export function CountrySwitch() {
   const { countries, country, setCountry } = usePreferences();
   if (countries.length <= 1) {
-    return <span className="text-sm text-[var(--color-charcoal-light)]">{countryLabel(country)}</span>;
+    return <span className="text-sm text-[var(--color-muted)]">{countryLabel(country)}</span>;
   }
   return (
     <select
       aria-label="Country"
       value={country}
       onChange={(e) => setCountry(e.target.value)}
-      className="rounded-md border border-[var(--color-border)] bg-white px-2 py-1 text-sm"
+      className="select-pill"
     >
       {countries.map((c) => (
         <option key={c} value={c}>

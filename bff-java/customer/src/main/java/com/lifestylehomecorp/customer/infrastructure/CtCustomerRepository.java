@@ -56,7 +56,8 @@ public class CtCustomerRepository implements CustomerRepository {
                 .password(in.password())
                 .firstName(in.firstName())
                 .lastName(in.lastName())
-                .anonymousId(in.anonymousId()); // no sign-in mode on the draft in SDK 19.11 — moot for a new customer
+                .anonymousId(in.anonymousId()); // the platform applies MergeWithExistingCustomerCart by default;
+                                                // a brand-new customer has no other cart, so the guest cart becomes theirs
         if (in.storeKey() != null && !in.storeKey().isBlank()) {
             draft.stores(StoreResourceIdentifierBuilder.of().key(in.storeKey()).build());
         }

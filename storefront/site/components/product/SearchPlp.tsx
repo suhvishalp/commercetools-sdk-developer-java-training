@@ -7,9 +7,11 @@ import { useRouter } from '@/i18n/routing';
 import { bffGet } from '@/lib/bff/client';
 import { useCapability } from '@/context/capabilities-context';
 import { usePreferences } from '@/context/preferences-context';
+import { X } from '@/components/ui/icons-extra';
+import { formatMoney } from '@/lib/utils';
 import { ProductCard } from './ProductCard';
 import { SortDropdown } from './SortDropdown';
-import { FacetPanel } from './FacetPanel';
+import { FacetPanel, labelFor } from './FacetPanel';
 import { PlpView, ProductView } from './types';
 import { SAMPLE_PRODUCTS } from './samples';
 
@@ -26,7 +28,7 @@ const PRICE_PREFIX = 'price:';
  * search.postFilter). Rendered only when search.plpV2 is unlocked; still degrades to the sample
  * catalogue if the composed call is unavailable, so it never crashes.
  */
-export function SearchPlp() {
+export function SearchPlp({ compact = false }: { compact?: boolean }) {
   const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -110,9 +112,20 @@ export function SearchPlp() {
 
   const hasPrev = page > 0;
   const hasNext = !usingSample && offset + limit < total;
+  const pageCount = usingSample ? 1 : Math.max(1, Math.ceil(total / Math.max(1, limit)));
+
+  if (compact) {
+    return (
+      <div className="grid grid-cols-2 gap-5 md:grid-cols-4">
+        {cards.slice(0, 8).map((p) => (
+          <ProductCard key={p.key} product={p} />
+        ))}
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col gap-6 md:flex-row">
+    <div className="grid items-start gap-9 lg:grid-cols-[260px_1fr]">
       <FacetPanel
         facets={facets}
         selectedColours={selectedColours}
@@ -123,21 +136,36 @@ export function SearchPlp() {
         onPriceChange={setPrice}
       />
 
-      <div className="flex-1">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <p className="text-sm text-[var(--color-charcoal-light)]">
-            {usingSample ? 'Sample catalogue' : `Total ${total} product${total === 1 ? '' : 's'}`}
+      <div>
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <p className="text-sm text-[var(--color-muted)]">
+            {usingSample ? null : <><b className="text-[var(--color-ink)]">{total}</b> product{total === 1 ? '' : 's'}</>}
             {q ? <> · “{q}”</> : null}
           </p>
-          <SortDropdown value={sort} onChange={onSort} />
+          <div className="flex flex-wrap gap-2">
+            {selectedColours.map((c) => (
+              <button key={c} className="chip on !h-8 !text-[13px]" onClick={() => toggleColour(c)}>
+                {labelFor(c)} <X size={13} />
+              </button>
+            ))}
+            {priceFrom != null || priceTo != null ? (
+              <button className="chip on !h-8 !text-[13px]" onClick={() => setPrice(null, null)}>
+                {priceFrom != null ? formatMoney(priceFrom, currency, locale) : '…'} – {priceTo != null ? formatMoney(priceTo, currency, locale) : '…'} <X size={13} />
+              </button>
+            ) : null}
+          </div>
+          <div className="ml-auto">
+            <SortDropdown value={sort} onChange={onSort} />
+          </div>
         </div>
 
         {cards.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-[var(--color-border)] p-8 text-center text-sm text-[var(--color-charcoal-light)]">
-            No products match these filters.
-          </p>
+          <div className="surface border-dashed p-14 text-center">
+            <h3 className="text-lg">No products match these filters</h3>
+            <p className="mt-1 text-sm text-[var(--color-muted)]">Try clearing a filter.</p>
+          </div>
         ) : (
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-5 md:grid-cols-3">
             {cards.map((p) => (
               <ProductCard key={p.key} product={p} />
             ))}
@@ -145,21 +173,23 @@ export function SearchPlp() {
         )}
 
         {hasPrev || hasNext ? (
-          <div className="mt-6 flex items-center justify-center gap-3 text-sm">
-            <button
-              onClick={() => gotoPage(page - 1)}
-              disabled={!hasPrev}
-              className="rounded-md border border-[var(--color-border)] bg-white px-3 py-1.5 disabled:opacity-40"
-            >
-              Previous
+          <div className="mt-9 flex items-center justify-center gap-1.5 text-sm">
+            <button onClick={() => gotoPage(page - 1)} disabled={!hasPrev} className="btn btn-light btn-sm disabled:opacity-40">
+              ‹ Previous
             </button>
-            <span className="text-[var(--color-charcoal-light)]">Page {page + 1}</span>
-            <button
-              onClick={() => gotoPage(page + 1)}
-              disabled={!hasNext}
-              className="rounded-md border border-[var(--color-border)] bg-white px-3 py-1.5 disabled:opacity-40"
-            >
-              Next
+            {Array.from({ length: Math.min(pageCount, 7) }, (_, i) => i).map((i) => (
+              <button
+                key={i}
+                onClick={() => gotoPage(i)}
+                className={`grid h-[38px] min-w-[38px] place-items-center rounded-full border text-sm ${
+                  i === page ? 'border-[var(--color-plum)] bg-[var(--color-plum)] text-white' : 'border-[var(--color-border)] bg-white hover:border-[var(--color-plum)]'
+                }`}
+              >
+                {i + 1}
+              </button>
+            ))}
+            <button onClick={() => gotoPage(page + 1)} disabled={!hasNext} className="btn btn-light btn-sm disabled:opacity-40">
+              Next ›
             </button>
           </div>
         ) : null}

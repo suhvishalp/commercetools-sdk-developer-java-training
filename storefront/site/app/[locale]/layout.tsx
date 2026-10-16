@@ -8,12 +8,14 @@ import { CapabilitiesProvider } from '@/context/capabilities-context';
 import { UnlockDialogProvider } from '@/context/unlock-dialog';
 import { PreferencesProvider } from '@/context/preferences-context';
 import { Header } from '@/components/layout/Header';
+import { Footer } from '@/components/layout/Footer';
 import { FocusHighlighter } from '@/components/ui/FocusHighlighter';
+import { ArchitectMode } from '@/components/architect/ArchitectMode';
 import '../globals.css';
 
 export const metadata: Metadata = {
   title: 'Lifestyle & Home Corp',
-  description: 'Training storefront — feature-gated on the LHC BFF',
+  description: 'Considered furniture and home décor, thoughtfully made in small batches.',
 };
 
 export function generateStaticParams() {
@@ -33,7 +35,7 @@ export default async function LocaleLayout({
 
   return (
     <html lang={locale}>
-      <body className="min-h-screen">
+      <body className="flex min-h-screen flex-col">
         <NextIntlClientProvider messages={messages}>
           <CapabilitiesProvider>
             <UnlockDialogProvider>
@@ -42,7 +44,12 @@ export default async function LocaleLayout({
                   <FocusHighlighter />
                 </Suspense>
                 <Header />
-                <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
+                <main className="mx-auto w-full max-w-7xl flex-1 px-6 pb-16 pt-6">{children}</main>
+                <Footer />
+                {/* Sphere Architect course: ?architect=1 explains the decisions behind the page. */}
+                <Suspense fallback={null}>
+                  <ArchitectMode />
+                </Suspense>
               </PreferencesProvider>
             </UnlockDialogProvider>
           </CapabilitiesProvider>

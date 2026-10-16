@@ -37,8 +37,8 @@ export function FeatureGate({
         <div className="absolute inset-0 z-10 grid place-items-center">
           <button
             onClick={() => open(meta)}
-            className="flex items-center gap-2 rounded-full bg-white/95 px-4 py-2 text-sm font-medium text-[var(--color-charcoal)] shadow-lg ring-1 ring-[var(--color-border)] hover:ring-[var(--color-terra)]"
-            title={`Unlocks in ${meta.session}${meta.sessionName ? ` — ${meta.sessionName}` : ''}`}
+            className="btn btn-unlock !h-10 !px-4 !text-sm"
+            title="Coming soon"
           >
             <Unlock size={14} />Unlock{title ? `: ${title}` : ''}
           </button>

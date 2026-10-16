@@ -71,6 +71,7 @@ export const CAPABILITY_META: Record<string, CapabilityMeta> = {
   'cart.promo':            meta('cart.promo',            'Session 4', 'Apply a discount code',          'POST /api/cart/discount-codes'),
   'cart.summary':          meta('cart.summary',          'Session 4', 'Cart summary + savings',         'GET /api/cart'),
   'cart.shoppingList':     meta('cart.shoppingList',     'Session 4', 'Shopping list (wishlist)',       'GET·POST /api/shopping-list'),
+  'cart.active':           meta('cart.active',           'Session 4', 'Inspect the active cart',        'GET /api/cart/active'),
   'customer.register':     meta('customer.register',     'Session 5', 'Register (sign up)',             'POST /api/customers/signup'),
   'customer.login':        meta('customer.login',        'Session 5', 'Sign in (login)',                'POST /api/customers/login'),
   'customer.cartMerge':    meta('customer.cartMerge',    'Session 5', 'Guest → customer cart merge',    'POST /api/customers/login?mergeMode='),

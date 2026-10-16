@@ -1,4 +1,16 @@
 {
-  "common": { "shopName": "Lifestyle & Home Corp" },
-  "nav": { "home": "Start", "products": "Produkte", "cart": "Warenkorb", "account": "Konto" }
+  "common": {
+    "shopName": "Lifestyle & Home Corp"
+  },
+  "nav": {
+    "home": "Start",
+    "products": "Produkte",
+    "cart": "Warenkorb",
+    "account": "Konto",
+    "signIn": "Anmelden",
+    "signOut": "Abmelden",
+    "myAccount": "Mein Konto",
+    "register": "Konto erstellen",
+    "hi": "Hallo, {name}"
+  }
 }

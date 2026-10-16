@@ -1,4 +1,5 @@
 import { ModuleGroup, TaskItem } from '../api/bff';
+import { track } from '../lib/track';
 import { groupBySession, methodColor, sessionTitle, taskRef, tierClasses } from '../lib/ui';
 
 /** Left panel: tasks grouped by session, accordion style. Click a task to open it in the main panel. */
@@ -25,7 +26,7 @@ export function Sidebar({
         Tasks
       </div>
       {groups.length === 0 ? (
-        <div className="px-4 py-2 text-sm text-[var(--color-text-muted)]">Connecting to BFF…</div>
+        <div className="px-4 py-2 text-sm text-[var(--color-text-muted)]">Connecting to {track().backendName}…</div>
       ) : null}
 
       {groups.map(({ session, tasks }) => {

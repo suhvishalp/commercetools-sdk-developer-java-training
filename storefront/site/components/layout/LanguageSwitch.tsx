@@ -8,14 +8,14 @@ export function LanguageSwitch() {
   const { languages, language, setLanguage } = usePreferences();
   // With a single language there's nothing to switch — show it as a static label.
   if (languages.length <= 1) {
-    return <span className="text-sm text-[var(--color-charcoal-light)]">{languageLabel(language)}</span>;
+    return <span className="text-sm text-[var(--color-muted)]">{languageLabel(language)}</span>;
   }
   return (
     <select
       aria-label="Language"
       value={language}
       onChange={(e) => setLanguage(e.target.value)}
-      className="rounded-md border border-[var(--color-border)] bg-white px-2 py-1 text-sm"
+      className="select-pill"
     >
       {languages.map((l) => (
         <option key={l} value={l}>
