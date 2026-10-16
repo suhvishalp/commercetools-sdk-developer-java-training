@@ -69,8 +69,10 @@ public class CustomerService {
         } catch (ApiHttpException ex) {
             throw friendlyDuplicate(ex);
         }
-        // A brand-new customer has no other cart, so the mode is moot: the guest cart simply becomes theirs.
-        return adopt(result, AnonymousCartSignInMode.USE_AS_NEW_ACTIVE_CUSTOMER_CART.getJsonName(), guestCartId, null);
+        // Sign-up applies the platform's default mode, MergeWithExistingCustomerCart — and a brand-new customer
+        // has no other cart to merge into, so the guest cart simply becomes theirs (customerId set, anonymousId
+        // cleared). Report that mode honestly: the cart was adopted under Merge, not under UseAsNew.
+        return adopt(result, AnonymousCartSignInMode.MERGE_WITH_EXISTING_CUSTOMER_CART.getJsonName(), guestCartId, null);
     }
 
     /**
@@ -80,8 +82,12 @@ public class CustomerService {
     public SignInOutcome signIn(String email, String password) {
         AnonymousCartSignInMode mode = AnonymousCartSignInMode.MERGE_WITH_EXISTING_CUSTOMER_CART;
         String guestCartId = guestCartIdOrNull();
+        // Snapshot the account's cart first so the merge report is exact (merged vs added) — the platform keeps
+        // the HIGHER quantity of a matching line, so the result alone cannot tell the two apart. No eligibility
+        // check here: plain sign-in is 5.2; the 5.3 decision (block an ineligible merge) lives in the mode variant.
+        Cart before = snapshotBefore(email, guestCartId);
         CustomerSignInResult result = repo.signIn(email, password, guestAnonymousIdOrNull(), mode, storeOf(email));
-        return adopt(result, mode.getJsonName(), guestCartId, null);
+        return adopt(result, mode.getJsonName(), guestCartId, before);
     }
 
     /**
@@ -95,7 +101,7 @@ public class CustomerService {
     public SignInOutcome signInAndResolveCart(String email, String password, String mergeMode) {
         // TODO (Task 5.3): sign in AND resolve the cart deliberately. Decide the AnonymousCartSignInMode
         // (MergeWithExistingCustomerCart vs UseAsNewActiveCustomerCart — modeOf(mergeMode)), preflight the
-        // customer's active cart (repo.findByEmail + carts.activeCartOfCustomer: same currency / store, or a
+        // customer's active cart (snapshotBefore(email, guestCartId) reads it; check same currency / store, or a
         // 409 with a reason — never a half-merged cart), call repo.signIn(...) with guestAnonymousIdOrNull() and
         // the mode, then adopt(result, mode, guestCartIdOrNull(), before) so the session points at the RETURNED
         // cart and the merge report is exact. The plain signIn(email, password) above shows the shape; the
@@ -129,16 +135,12 @@ public class CustomerService {
      * reaches the browser (the credentials are still checked by the platform on the sign-in call).
      */
     private Cart preflight(String email, String guestCartId, AnonymousCartSignInMode mode) {
-        if (guestCartId == null) {
+        Cart before = snapshotBefore(email, guestCartId);
+        if (before == null) {
             return null;
         }
-        Customer existing = repo.findByEmail(email);
-        if (existing == null) {
-            return null; // unknown email → the sign-in call will answer InvalidCredentials
-        }
-        Cart before = carts.activeCartOfCustomer(existing.getId());
         Cart guest = carts.get(guestCartId);
-        if (before != null && guest != null && mode == AnonymousCartSignInMode.MERGE_WITH_EXISTING_CUSTOMER_CART) {
+        if (guest != null && mode == AnonymousCartSignInMode.MERGE_WITH_EXISTING_CUSTOMER_CART) {
             String reason = ineligibility(guest, before);
             if (reason != null) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT,
@@ -147,6 +149,22 @@ public class CustomerService {
             }
         }
         return before;
+    }
+
+    /**
+     * The account's most recently modified Active cart as it is BEFORE sign-in — the merge target — or null when
+     * there is no guest cart to hand over, the email is unknown (the sign-in call will answer InvalidCredentials)
+     * or the account has no active cart. Read-only; the lookup by email is server-side and never reaches the browser.
+     */
+    private Cart snapshotBefore(String email, String guestCartId) {
+        if (guestCartId == null) {
+            return null;
+        }
+        Customer existing = repo.findByEmail(email);
+        if (existing == null) {
+            return null;
+        }
+        return carts.activeCartOfCustomer(existing.getId());
     }
 
     /** The platform's eligibility rule: same currency, and the same store when either cart has one. */
@@ -188,18 +206,51 @@ public class CustomerService {
     }
 
     private SignInOutcome adopt(CustomerSignInResult result, String mode, String guestCartId, Cart before) {
+        // Who was here before this call: a signed-in session has no guest basket to hand over.
+        boolean wasSignedIn = session.isSignedIn();
         Customer c = result.getCustomer();
         session.signedIn(c.getId(), CustomerMapper.customerGroupId(c));
         Cart active = result.getCart();
-        if (active != null) {
-            session.setActiveCart(active.getId());
-        }
+        // The session now belongs to THIS customer: point it at their cart — or at none. Leaving the previous
+        // pointer in place would show the last shopper's basket under the new account (and 6.x would 404 it).
+        session.setActiveCart(active == null ? null : active.getId());
         MergeReport report = buildReport(mode, active, guestCartId, before);
         int items = active == null || active.getLineItems() == null ? 0
                 : active.getLineItems().stream().mapToInt(li -> li.getQuantity().intValue()).sum();
         // Re-read with customerGroup expanded so the profile carries the group KEY, not just its id.
         return new SignInOutcome(CustomerMapper.toProfile(repo.get(c.getId())),
-                active == null ? null : active.getId(), items, report);
+                active == null ? null : active.getId(), items, report, note(active, items, guestCartId, wasSignedIn, report));
+    }
+
+    /** The outcome in plain words — what the demo (and a storefront banner) should say about the basket. */
+    private static String note(Cart active, int items, String guestCartId, boolean wasSignedIn, MergeReport report) {
+        if (guestCartId != null && active != null && active.getId().equals(guestCartId)) {
+            return "Your guest basket (" + items + " item" + (items == 1 ? "" : "s") + ") is now this account's basket — "
+                    + "the platform set customerId on it and cleared anonymousId (mode " + report.mode() + ").";
+        }
+        if (guestCartId != null && active != null) {
+            return "Your guest basket was merged into the basket already on this account — " + items + " item"
+                    + (items == 1 ? "" : "s") + " now; " + report.addedLines() + " added, " + report.mergedLines()
+                    + " merged" + (report.leftBehind().isEmpty() ? "" : ", " + report.leftBehind().size() + " left behind")
+                    + ". The guest cart stays readable as cartState=Merged.";
+        }
+        if (guestCartId != null) {
+            return "The guest basket could not be carried over — the sign-in result returned no cart.";
+        }
+        if (wasSignedIn) {
+            return "This session was already signed in as another customer, so there was no GUEST basket to hand over "
+                    + "— that basket stays with the previous account. This account "
+                    + (active == null ? "starts without a basket (POST /api/cart creates one)."
+                            : "continues with its own basket (" + items + " item" + (items == 1 ? "" : "s") + ").")
+                    + " To demo the hand-over: POST /api/session/sign-out, create a cart (4.1), add items, then sign up / in.";
+        }
+        if (active == null) {
+            return "No guest basket existed in this session, so nothing was handed over. Create a cart (4.1) and add items "
+                    + "BEFORE signing up / in to watch it follow the shopper. (The BFF session is in-memory: a restart forgets "
+                    + "the guest cart and anonymousId.)";
+        }
+        return "No guest basket in this session; your account's existing basket (" + items + " item" + (items == 1 ? "" : "s")
+                + ") is active.";
     }
 
     /**
@@ -241,7 +292,11 @@ public class CustomerService {
                     added++;
                 }
             } else if (wasMerged && match.getQuantity() > g.getQuantity()) {
-                merged++; // heuristic (re-derived report): a higher quantity than the guest had ⇒ it met an existing line
+                // Fallback without a snapshot (e.g. a re-derived report after a BFF restart). The platform keeps the
+                // HIGHER quantity of two matching lines, so a result above the guest's quantity proves the line met
+                // an existing one. A result EQUAL to the guest's cannot be told apart from "added" — this count is a
+                // lower bound; every sign-in path above takes the snapshot, so this branch is rarely reached.
+                merged++;
             } else {
                 added++;
             }

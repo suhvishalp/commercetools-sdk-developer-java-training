@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState, useSyncExternalStore } from 'react';
 import { useLocale } from 'next-intl';
 import useSWR from 'swr';
 import { FeatureGate } from '@/components/ui/FeatureGate';
@@ -12,7 +12,14 @@ import { useShoppingList } from '@/hooks/useShoppingList';
 import { CartLineView, MoneyView } from '@/lib/cart-types';
 import { SavedItemView } from '@/lib/shopping-list-types';
 import { formatMoney } from '@/lib/utils';
-import { Package, Layers, Sparkles, Tag, Heart } from '@/components/ui/icons';
+import { Package, Layers, Sparkles, Tag, Heart, User, Check, ShieldCheck, Gift } from '@/components/ui/icons';
+import { Minus, Plus } from '@/components/ui/icons-extra';
+import { Link } from '@/i18n/routing';
+import { DeliveryPanel } from './DeliveryPanel';
+import { FulfilmentSelect, DELIVERY } from './FulfilmentSelect';
+import { usePickupLocations } from '@/hooks/useCart';
+import { mergeNoticeStore, parseMergeReport } from '@/hooks/useSession';
+import { MergeReportView } from '@/lib/customer-types';
 
 const m = (centAmount: number): MoneyView => ({ centAmount, currencyCode: 'EUR', fractionDigits: 2 });
 const line = (over: Partial<CartLineView> & { name: string; lineItemId: string }): CartLineView => ({
@@ -24,7 +31,7 @@ const line = (over: Partial<CartLineView> & { name: string; lineItemId: string }
 /** Shown (dimmed) while cart.summary is locked, so the cart still reads like a real shop — and it
  *  demonstrates the bundle grouping the live cart will render once unlocked. */
 const SAMPLE_LINES: CartLineView[] = [
-  line({ lineItemId: 's1', name: 'Linen Two-Seater Sofa', unitPrice: m(89900), lineTotal: m(89900) }),
+  line({ lineItemId: 's1', name: 'Charlie Armchair', unitPrice: m(42415), lineTotal: m(42415) }),
   line({
     lineItemId: 's2', name: 'Bedding Bundle', bundleId: 'sample', unitPrice: m(3198), lineTotal: m(3198), lineSavings: m(500),
     children: [
@@ -33,7 +40,7 @@ const SAMPLE_LINES: CartLineView[] = [
     ],
   }),
 ];
-const SAMPLE_TOTALS = { subtotal: m(93598), savings: m(500), shipping: null, tax: null, total: m(93098) };
+const SAMPLE_TOTALS = { subtotal: m(45613), savings: m(500), shipping: null, tax: null, total: m(45113) };
 
 /**
  * 7.7 — the `requiresWhiteGlove` Custom Field is written by the platform (our API Extension) before the cart
@@ -47,14 +54,14 @@ function WhiteGloveBadge({ lineCount }: { lineCount: number }) {
   const extras = data && data.ok ? data.data : null;
   const on = extras ? extras.requiresWhiteGlove : true; // sample state while locked
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-[var(--color-border)] bg-white p-4 text-sm">
-      <Sparkles size={16} className={on ? 'text-[var(--color-terra)]' : 'text-[var(--color-charcoal-light)]'} />
+    <div className="surface flex items-start gap-3 p-4 text-sm">
+      <Sparkles size={18} className={`mt-0.5 shrink-0 ${on ? 'text-[var(--color-violet)]' : 'text-[var(--color-muted)]'}`} />
       {on ? (
         <span>
-          <strong>White Glove Delivery</strong> — added automatically for premium items. Set by LHC’s cart rules, on every channel.
+          <b className="font-semibold">White Glove Delivery included</b> — our team unpacks, assembles and takes the packaging away. Added automatically for premium items.
         </span>
       ) : (
-        <span className="text-[var(--color-charcoal-light)]">Standard delivery — add an item of €400 or more and White Glove is added for you.</span>
+        <span className="text-[var(--color-muted)]">Standard delivery — premium items get White Glove Delivery added for you automatically.</span>
       )}
     </div>
   );
@@ -63,10 +70,13 @@ function WhiteGloveBadge({ lineCount }: { lineCount: number }) {
 export function CartView() {
   const locale = useLocale();
   const { unlocked } = useCapability('cart.summary');
-  const { cart, changeQuantity, removeLine, applyCode } = useCart();
+  const { cart, changeQuantity, removeLine, applyCode, setLineFulfilment } = useCart();
   const { saveForLater } = useShoppingList();
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
+  // 5.3 — shown once after a sign-in that met an existing basket ("we combined your basket").
+  const mergeRaw = useSyncExternalStore(mergeNoticeStore.subscribe, mergeNoticeStore.getSnapshot, mergeNoticeStore.getServerSnapshot);
+  const merge = useMemo(() => parseMergeReport(mergeRaw), [mergeRaw]);
 
   const fmt = (v: MoneyView | null | undefined) => (v ? formatMoney(v.centAmount, v.currencyCode, locale) : '—');
 
@@ -75,6 +85,7 @@ export function CartView() {
   const lines = live ?? SAMPLE_LINES;
   const totals = unlocked && cart ? cart : SAMPLE_TOTALS;
   const empty = unlocked && (!cart || cart.lines.length === 0);
+  const itemCount = lines.reduce((a, l) => a + l.quantity, 0);
 
   const act = async (fn: () => Promise<unknown>) => {
     if (busy) return;
@@ -83,14 +94,17 @@ export function CartView() {
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-      <div className="space-y-6">
-        <FeatureGate capability="cart.summary" title="Cart">
-          <div className="rounded-2xl border border-[var(--color-border)] bg-white">
+    <div className="grid items-start gap-8 lg:grid-cols-[1fr_380px]">
+      <div className="space-y-5">
+        <MergeNotice report={merge} onDismiss={() => mergeNoticeStore.clear()} />
+        <FeatureGate capability="cart.summary" title="Your bag">
+          <div className="surface px-6">
             {empty ? (
-              <p className="p-8 text-center text-[var(--color-charcoal-light)]">
-                Your cart is empty — add something from the catalogue.
-              </p>
+              <div className="py-14 text-center">
+                <h3 className="text-lg">Your bag is empty</h3>
+                <p className="mt-1 text-sm text-[var(--color-muted)]">Browse the collection or pick up where you left off.</p>
+                <Link href="/products" className="btn btn-primary mt-5">Start shopping</Link>
+              </div>
             ) : (
               <div className="divide-y divide-[var(--color-border)]">
                 {lines.map((l) => (
@@ -103,77 +117,135 @@ export function CartView() {
                     onQty={(q) => act(() => changeQuantity(l.lineItemId, q))}
                     onRemove={() => act(() => removeLine(l.lineItemId))}
                     onSaveForLater={() => act(() => saveForLater(l.lineItemId))}
+                    onFulfilment={(key) => act(() => setLineFulfilment(l.lineItemId, { supplyChannelKey: key }))}
                   />
                 ))}
+                <div className="flex items-center gap-3 py-4 text-sm">
+                  <Gift size={18} className="text-[var(--color-violet)]" />
+                  <span>Add a gift message or gift wrap</span>
+                  <Link href="/checkout" className="chip !h-8 !text-[13px]">Add at checkout</Link>
+                </div>
               </div>
             )}
           </div>
         </FeatureGate>
 
+        {/* Delivery address + method (cart.address / cart.shipping) — settable at checkout, switchable here. */}
+        {empty ? null : <DeliveryPanel cart={unlocked ? cart : null} />}
+
         {/* Saved items / wishlist (cart.shoppingList) */}
         <SavedItemsPanel />
       </div>
 
-      <div className="space-y-4">
-        {/* Promo code (cart.promo) */}
-        <FeatureGate capability="cart.promo" title="Promo code">
-          <form
-            className="rounded-2xl border border-[var(--color-border)] bg-white p-4"
-            onSubmit={(e) => { e.preventDefault(); if (code.trim()) act(() => applyCode(code.trim())); }}
-          >
-            <label className="mb-2 flex items-center gap-2 text-sm font-medium">
-              <Tag size={15} /> Promo code
-            </label>
-            <div className="flex gap-2">
-              <input
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                placeholder="e.g. SAVE10"
-                className="flex-1 rounded-lg border border-[var(--color-border)] px-3 py-2 text-sm"
-              />
-              <button type="submit" disabled={busy}
-                className="rounded-lg bg-[var(--color-charcoal)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
-                Apply
-              </button>
-            </div>
-            {unlocked && cart?.discountCodes?.length ? (
-              <p className="mt-2 text-xs text-[var(--color-sage)]">Applied: {cart.discountCodes.join(', ')}</p>
+      <div className="space-y-4 lg:sticky lg:top-[172px]">
+        <div className="surface p-6">
+          <h3 className="text-lg">Order summary <span className="font-sans text-sm font-normal text-[var(--color-muted)]">· {itemCount} item{itemCount === 1 ? '' : 's'}</span></h3>
+
+          {/* Promo code (cart.promo) */}
+          <FeatureGate capability="cart.promo" title="Promo code" className="mt-4">
+            <form
+              onSubmit={(e) => { e.preventDefault(); if (code.trim()) act(() => applyCode(code.trim())); }}
+            >
+              <div className="flex gap-2">
+                <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Promo code" className="field !h-11 flex-1 !rounded-full" />
+                <button type="submit" disabled={busy} className="btn btn-dark !h-11">Apply</button>
+              </div>
+              {unlocked && cart?.discountCodes?.length ? (
+                <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-[var(--color-teal-dark)]"><Tag size={12} /> {cart.discountCodes.join(', ')} applied</p>
+              ) : (
+                <p className="mt-2 text-xs text-[var(--color-muted)]">Try SAVE10 for 10% off your first order.</p>
+              )}
+            </form>
+          </FeatureGate>
+
+          <div className="mt-5 space-y-2.5 text-[15px]">
+            <Row label="Subtotal" value={fmt(totals.subtotal)} />
+            {totals.savings && totals.savings.centAmount > 0 ? (
+              <Row label="Savings" value={`−${fmt(totals.savings)}`} accent />
             ) : null}
-          </form>
-        </FeatureGate>
+            <Row
+              label={unlocked && cart?.shippingMethod ? `Delivery · ${cart.shippingMethod}` : 'Delivery'}
+              value={totals.shipping ? (totals.shipping.centAmount === 0 ? 'Free' : fmt(totals.shipping)) : 'Calculated at checkout'}
+            />
+            {totals.tax ? <Row label="Estimated tax" value={fmt(totals.tax)} /> : null}
+            <div className="border-t border-[var(--color-border)] pt-3">
+              <Row label="Total" value={fmt(totals.total)} strong />
+            </div>
+          </div>
+
+          <Link
+            href="/checkout"
+            aria-disabled={empty}
+            className={`btn btn-primary btn-lg mt-5 w-full ${empty ? 'pointer-events-none opacity-50' : ''}`}
+          >
+            Proceed to checkout
+          </Link>
+          <p className="mt-3 flex items-center gap-2 text-xs text-[var(--color-muted)]">
+            <ShieldCheck size={14} /> Secure checkout · Visa, Mastercard, Amex, PayPal, Apple Pay
+          </p>
+          {unlocked && cart?.id ? (
+            <p className="mt-2 flex items-center gap-1.5 text-xs text-[var(--color-muted)]">
+              <User size={12} />
+              {cart.owner === 'customer'
+                ? `Your basket${cart.customerEmail ? ` · ${cart.customerEmail}` : ''}`
+                : 'Guest basket — sign in to keep it on your account'}
+            </p>
+          ) : null}
+        </div>
 
         {/* Session 7.7 — set by the cart-rules API Extension, never by this storefront */}
         <FeatureGate capability="ext.cartRules" title="White Glove Delivery">
           <WhiteGloveBadge lineCount={lines.length} />
-        </FeatureGate>
-
-        {/* Order summary */}
-        <div className="rounded-2xl border border-[var(--color-border)] bg-white p-5">
-          <Row label="Subtotal" value={fmt(totals.subtotal)} />
-          {totals.savings && totals.savings.centAmount > 0 ? (
-            <Row label="Savings" value={`−${fmt(totals.savings)}`} accent />
-          ) : null}
-          <Row label="Delivery" value={totals.shipping ? fmt(totals.shipping) : 'Calculated at checkout'} />
-          {totals.tax ? <Row label="Tax" value={fmt(totals.tax)} /> : null}
-          <div className="mt-2 border-t border-[var(--color-border)] pt-2">
-            <Row label="Total" value={fmt(totals.total)} strong />
-          </div>
-        </div>
-
-        <FeatureGate capability="order.create" title="Checkout">
-          <a href="checkout"
-            className="block rounded-lg bg-[var(--color-terra)] px-5 py-3 text-center font-medium text-white hover:bg-[var(--color-terra-dark)]">
-            Proceed to checkout
-          </a>
         </FeatureGate>
       </div>
     </div>
   );
 }
 
+/**
+ * 5.3 — what sign-in did to the guest basket, shown once. Gated on customer.cartMerge: while locked a
+ * sample notice explains the feature; once unlocked it renders only when a real merge happened.
+ */
+function MergeNotice({ report, onDismiss }: { report: MergeReportView | null; onDismiss: () => void }) {
+  const { unlocked } = useCapability('customer.cartMerge');
+  if (unlocked && !report) return null;
+  const merged = report?.mergedLines ?? 1;
+  const added = report?.addedLines ?? 2;
+  const left = report?.leftBehind ?? [];
+  const kept = report?.mode === 'UseAsNewActiveCustomerCart';
+  return (
+    <FeatureGate capability="customer.cartMerge" title="Basket merge">
+      <div className="flex items-start justify-between gap-3 rounded-[14px] border border-[var(--color-teal)]/40 bg-[var(--color-teal-light)] p-4 text-sm">
+        <div className="flex items-start gap-2.5">
+          <Check size={16} className="mt-0.5 shrink-0 text-[var(--color-teal-dark)]" />
+          <div>
+            {kept ? (
+              <>
+                <p className="font-semibold">We kept this basket.</p>
+                <p className="text-[var(--color-muted)]">The basket saved on your account has been set aside — nothing was deleted.</p>
+              </>
+            ) : (
+              <>
+                <p className="font-semibold">We combined your basket with the one on your account.</p>
+                <p className="text-[var(--color-muted)]">
+                  {added} item{added === 1 ? '' : 's'} added{merged > 0 ? `, ${merged} merged (larger quantity kept)` : ''}
+                  {left.length > 0 ? `, ${left.length} could not be carried over (${left.join(', ')})` : ''}.
+                </p>
+              </>
+            )}
+          </div>
+        </div>
+        {unlocked ? (
+          <button onClick={onDismiss} className="text-xs text-[var(--color-muted)] underline">Dismiss</button>
+        ) : null}
+      </div>
+    </FeatureGate>
+  );
+}
+
 /** One cart line. A bundle parent renders its children indented beneath it + a "Bundle saving" line. */
 function CartRow({
-  l, fmt, editable, busy, onQty, onRemove, onSaveForLater,
+  l, fmt, editable, busy, onQty, onRemove, onSaveForLater, onFulfilment,
 }: {
   l: CartLineView;
   fmt: (v: MoneyView | null | undefined) => string;
@@ -182,64 +254,74 @@ function CartRow({
   onQty: (quantity: number) => void;
   onRemove: () => void;
   onSaveForLater?: () => void;
+  /** 4.5 — change this line's fulfilment: a pickup store key, or "" for delivery. */
+  onFulfilment?: (supplyChannelKey: string) => void;
 }) {
   const isBundle = l.children.length > 0;
+  // The line carries the supply channel's ID; the selector works in keys — resolve through the location list.
+  const { unlocked: channelUnlocked } = useCapability('cart.channel');
+  const { locations } = usePickupLocations(channelUnlocked && editable);
+  const pickupKey = l.supplyChannelId ? locations.find((p) => p.id === l.supplyChannelId)?.key ?? DELIVERY : DELIVERY;
   return (
-    <div className="p-4">
-      <div className="flex items-center gap-4">
-        <div className="grid h-16 w-16 place-items-center rounded-lg bg-[var(--color-cream-dark)] text-[var(--color-charcoal-light)]">
-          {isBundle ? <Layers size={24} /> : <Package size={24} />}
+    <div className="py-5">
+      <div className="flex items-start gap-5">
+        <div className="grid h-[104px] w-[104px] shrink-0 place-items-center rounded-xl bg-[var(--color-earth)] text-[var(--color-muted)]">
+          {isBundle ? <Layers size={28} /> : <Package size={28} />}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="font-medium">{l.name}</p>
-            {isBundle ? <Badge>Bundle</Badge> : null}
+            <p className="text-[17px] font-semibold">{l.name}</p>
+            {isBundle ? <span className="pill pill-violet">Bundle</span> : null}
             {l.recurring ? (
-              <Badge icon>
-                <Sparkles size={11} /> Subscribe &amp; Save{l.recurrenceLabel ? ` · ${l.recurrenceLabel}` : ''}
-              </Badge>
+              <span className="pill pill-teal"><Sparkles size={11} /> Subscribe &amp; Save{l.recurrenceLabel ? ` · ${l.recurrenceLabel}` : ''}</span>
             ) : null}
           </div>
-          {l.recurring && l.recurrencePriceMode ? (
-            <p className="mt-0.5 text-xs text-[var(--color-charcoal-light)]">
-              {l.recurrencePriceMode === 'Dynamic' ? 'Price updates each delivery' : 'Price locked at today’s rate'}
-            </p>
-          ) : null}
-          {editable && !isBundle ? (
-            <QtyStepper qty={l.quantity} busy={busy} onQty={onQty} />
-          ) : (
-            <p className="mt-0.5 text-sm text-[var(--color-charcoal-light)]">Qty {l.quantity}</p>
-          )}
+          <p className="mt-0.5 flex items-center gap-2 text-[13px] text-[var(--color-muted)]">
+            {l.sku ? <span className="font-mono">{l.sku}</span> : null}
+            {l.recurring && l.recurrencePriceMode ? <span>· {l.recurrencePriceMode === 'Dynamic' ? 'Price updates each delivery' : 'Price locked at today’s rate'}</span> : null}
+            <span className="inline-flex items-center gap-1.5"><span className="stock-dot" /> In stock</span>
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-2.5">
+            {editable && !isBundle ? (
+              <QtyStepper qty={l.quantity} busy={busy} onQty={onQty} />
+            ) : (
+              <span className="chip !h-9">Qty {l.quantity}</span>
+            )}
+            {!isBundle && !l.recurring && onFulfilment ? (
+              <div id={`cap-cart.channel${editable ? '' : '-sample'}`}>
+                <FulfilmentSelect compact id={`fulfilment-${l.lineItemId}`} value={pickupKey} disabled={busy || !editable} onChange={onFulfilment} />
+              </div>
+            ) : null}
+            {editable ? (
+              <>
+                {onSaveForLater && !isBundle ? (
+                  <button onClick={onSaveForLater} disabled={busy} className="chip !h-9 disabled:opacity-50">
+                    <Heart size={13} /> Save for later
+                  </button>
+                ) : null}
+                <button onClick={onRemove} disabled={busy} className="chip !h-9 disabled:opacity-50">
+                  Remove
+                </button>
+              </>
+            ) : null}
+          </div>
         </div>
         <div className="text-right">
-          <p className="font-medium">{fmt(l.lineTotal)}</p>
-          {editable ? (
-            <div className="mt-1 flex flex-col items-end gap-0.5">
-              {onSaveForLater && !isBundle ? (
-                <button onClick={onSaveForLater} disabled={busy}
-                  className="inline-flex items-center gap-1 text-xs text-[var(--color-charcoal-light)] underline hover:text-[var(--color-terra)] disabled:opacity-50">
-                  <Heart size={11} /> Save for later
-                </button>
-              ) : null}
-              <button onClick={onRemove} disabled={busy}
-                className="text-xs text-[var(--color-charcoal-light)] underline hover:text-[var(--color-terra)] disabled:opacity-50">
-                Remove
-              </button>
-            </div>
-          ) : null}
+          <p className="text-[18px] font-bold">{fmt(l.lineTotal)}</p>
+          {l.quantity > 1 && l.unitPrice ? <p className="text-xs text-[var(--color-muted)]">{fmt(l.unitPrice)} each</p> : null}
         </div>
       </div>
 
       {isBundle ? (
-        <div className="mt-3 space-y-1 border-l-2 border-[var(--color-border)] pl-4">
+        <div className="ml-[124px] mt-3 space-y-1 border-l-2 border-[var(--color-border)] pl-4">
           {l.children.map((c) => (
-            <div key={c.lineItemId} className="flex justify-between text-sm text-[var(--color-charcoal-light)]">
+            <div key={c.lineItemId} className="flex justify-between text-sm text-[var(--color-muted)]">
               <span>{c.quantity} × {c.name}</span>
               <span>{fmt(c.lineTotal)}</span>
             </div>
           ))}
           {l.lineSavings && l.lineSavings.centAmount > 0 ? (
-            <div className="flex justify-between text-sm text-[var(--color-sage)]">
+            <div className="flex justify-between text-sm font-medium text-[var(--color-teal-dark)]">
               <span>Bundle saving</span>
               <span>−{fmt(l.lineSavings)}</span>
             </div>
@@ -252,36 +334,28 @@ function CartRow({
 
 function QtyStepper({ qty, busy, onQty }: { qty: number; busy: boolean; onQty: (q: number) => void }) {
   return (
-    <div className="mt-1 inline-flex items-center rounded-lg border border-[var(--color-border)]">
+    <div className="inline-flex h-9 items-center rounded-full border border-[var(--color-border)] bg-white">
       <button onClick={() => onQty(Math.max(1, qty - 1))} disabled={busy || qty <= 1}
-        className="px-2.5 py-1 text-[var(--color-charcoal-light)] disabled:opacity-40" aria-label="Decrease quantity">−</button>
-      <span className="min-w-[2ch] px-2 text-center text-sm">{qty}</span>
+        className="grid h-full w-9 place-items-center text-[var(--color-muted)] disabled:opacity-40" aria-label="Decrease quantity"><Minus size={14} /></button>
+      <span className="min-w-[2ch] px-1 text-center text-sm font-semibold">{qty}</span>
       <button onClick={() => onQty(qty + 1)} disabled={busy}
-        className="px-2.5 py-1 text-[var(--color-charcoal-light)] disabled:opacity-40" aria-label="Increase quantity">+</button>
+        className="grid h-full w-9 place-items-center text-[var(--color-muted)] disabled:opacity-40" aria-label="Increase quantity"><Plus size={14} /></button>
     </div>
-  );
-}
-
-function Badge({ children, icon }: { children: React.ReactNode; icon?: boolean }) {
-  return (
-    <span className={`inline-flex items-center gap-1 rounded-full bg-[var(--color-cream-dark)] px-2 py-0.5 text-[11px] font-medium text-[var(--color-charcoal-light)] ${icon ? '' : ''}`}>
-      {children}
-    </span>
   );
 }
 
 function Row({ label, value, strong, accent }: { label: string; value: string; strong?: boolean; accent?: boolean }) {
   return (
-    <div className="flex justify-between text-sm">
-      <span className="text-[var(--color-charcoal-light)]">{label}</span>
-      <span className={`${strong ? 'text-base font-semibold' : 'font-medium'} ${accent ? 'text-[var(--color-sage)]' : ''}`}>{value}</span>
+    <div className="flex justify-between">
+      <span className={strong ? 'font-semibold' : 'text-[var(--color-muted)]'}>{label}</span>
+      <span className={`${strong ? 'text-lg font-bold' : 'font-medium'} ${accent ? 'text-[var(--color-teal-dark)]' : ''}`}>{value}</span>
     </div>
   );
 }
 
 const SAMPLE_SAVED: SavedItemView[] = [
-  { lineItemId: 'w1', sku: null, name: 'Merino Wool Throw', quantity: 1 },
-  { lineItemId: 'w2', sku: null, name: 'Stoneware Vase', quantity: 1 },
+  { lineItemId: 'w1', sku: null, name: 'Aria Rug', quantity: 1 },
+  { lineItemId: 'w2', sku: null, name: 'Vanilla Candle', quantity: 1 },
 ];
 
 /** Saved-for-later / wishlist panel below the cart (cart.shoppingList). Move one or all back to the cart. */
@@ -300,35 +374,32 @@ function SavedItemsPanel() {
   if (unlocked && items.length === 0) return null;
 
   return (
-    <FeatureGate capability="cart.shoppingList" title="Saved items">
-      <div className="rounded-2xl border border-[var(--color-border)] bg-white">
-        <div className="flex items-center justify-between border-b border-[var(--color-border)] p-4">
-          <h2 className="flex items-center gap-2 font-medium"><Heart size={16} /> Saved for later</h2>
+    <FeatureGate capability="cart.shoppingList" title="Saved for later">
+      <div className="surface" id="saved">
+        <div className="flex items-center justify-between border-b border-[var(--color-border)] px-6 py-4">
+          <h2 className="flex items-center gap-2 text-lg"><Heart size={18} /> Saved for later <span className="font-sans text-sm font-normal text-[var(--color-muted)]">· {items.length}</span></h2>
           {unlocked && items.length > 0 ? (
-            <button onClick={() => act(() => moveAllToCart())} disabled={busy}
-              className="text-xs font-medium text-[var(--color-terra)] underline hover:text-[var(--color-terra-dark)] disabled:opacity-50">
-              Move all to cart
+            <button onClick={() => act(() => moveAllToCart())} disabled={busy} className="btn btn-light btn-sm disabled:opacity-50">
+              Move all to bag
             </button>
           ) : null}
         </div>
-        <div className="divide-y divide-[var(--color-border)]">
+        <div className="divide-y divide-[var(--color-border)] px-6">
           {items.map((it) => (
-            <div key={it.lineItemId} className="flex items-center gap-4 p-4">
-              <div className="grid h-12 w-12 place-items-center rounded-lg bg-[var(--color-cream-dark)] text-[var(--color-charcoal-light)]">
-                <Package size={20} />
+            <div key={it.lineItemId} className="flex items-center gap-4 py-4">
+              <div className="grid h-14 w-14 place-items-center rounded-xl bg-[var(--color-earth)] text-[var(--color-muted)]">
+                <Package size={22} />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="font-medium">{it.name}</p>
-                <p className="text-sm text-[var(--color-charcoal-light)]">Qty {it.quantity}</p>
+                <p className="font-semibold">{it.name}</p>
+                <p className="text-sm text-[var(--color-muted)]">Qty {it.quantity}{it.sku ? ` · ${it.sku}` : ''}</p>
               </div>
               {unlocked ? (
-                <div className="flex items-center gap-3 text-xs">
-                  <button onClick={() => act(() => moveToCart(it.lineItemId))} disabled={busy}
-                    className="font-medium text-[var(--color-terra)] underline hover:text-[var(--color-terra-dark)] disabled:opacity-50">
-                    Move to cart
+                <div className="flex items-center gap-2">
+                  <button onClick={() => act(() => moveToCart(it.lineItemId))} disabled={busy} className="btn btn-dark btn-sm disabled:opacity-50">
+                    Move to bag
                   </button>
-                  <button onClick={() => act(() => removeItem(it.lineItemId))} disabled={busy}
-                    className="text-[var(--color-charcoal-light)] underline hover:text-[var(--color-terra)] disabled:opacity-50">
+                  <button onClick={() => act(() => removeItem(it.lineItemId))} disabled={busy} className="chip !h-[38px] disabled:opacity-50">
                     Remove
                   </button>
                 </div>

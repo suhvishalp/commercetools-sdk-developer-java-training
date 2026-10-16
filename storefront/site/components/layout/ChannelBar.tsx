@@ -13,19 +13,11 @@ export function ChannelBar() {
   if (channels.length <= 1) return null;
 
   return (
-    <div className="border-b border-[var(--color-border)] bg-[var(--color-cream-dark)]/40">
-      <div className="mx-auto flex max-w-6xl items-center gap-2 overflow-x-auto px-4 py-1.5 text-xs">
-        <span className="shrink-0 text-[var(--color-charcoal-light)]">Price channel:</span>
+    <div className="border-b border-[var(--color-border)] bg-[var(--color-earth)]/50">
+      <div className="mx-auto flex w-full max-w-7xl items-center gap-2 overflow-x-auto px-6 py-1.5 text-xs">
+        <span className="shrink-0 text-[var(--color-muted)]">Price channel:</span>
         {channels.map((c) => (
-          <button
-            key={c}
-            onClick={() => setChannel(c)}
-            className={`shrink-0 rounded-full border px-2.5 py-0.5 ${
-              channel === c
-                ? 'border-[var(--color-terra)] bg-[var(--color-terra)]/10 text-[var(--color-terra)]'
-                : 'border-[var(--color-border)] bg-white text-[var(--color-charcoal)] hover:border-[var(--color-terra)]'
-            }`}
-          >
+          <button key={c} onClick={() => setChannel(c)} className={`chip !h-7 shrink-0 !text-xs ${channel === c ? 'on' : ''}`}>
             {c}
           </button>
         ))}

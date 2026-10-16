@@ -18,7 +18,7 @@ import { SAMPLE_PRODUCTS } from './samples';
  * SearchPlp. Sort/Filters show as locked affordances here that point at the Session-3 work.
  * When a `?category=<key>` is present, lists that category's products (incl. subcategories).
  */
-export function ProductGrid() {
+export function ProductGrid({ compact = false }: { compact?: boolean }) {
   const locale = useLocale();
   const { currency, country, channel } = usePreferences();
   const category = useSearchParams().get('category');
@@ -41,19 +41,29 @@ export function ProductGrid() {
   const products = envelope ? envelope.products : SAMPLE_PRODUCTS;
   const total = envelope ? envelope.total : products.length;
 
+  if (compact) {
+    return (
+      <div className="grid grid-cols-2 gap-5 md:grid-cols-4">
+        {products.slice(0, 8).map((p: ProductView) => (
+          <ProductCard key={p.key} product={p} />
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="mb-4 flex items-center justify-between gap-3">
-        <p className="text-sm text-[var(--color-charcoal-light)]">
-          {envelope ? `Total ${total} product${total === 1 ? '' : 's'}` : 'Sample catalogue'}
+        <p className="text-sm text-[var(--color-muted)]">
+          {envelope ? <><b className="text-[var(--color-ink)]">{total}</b> product{total === 1 ? '' : 's'}</> : null}
         </p>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <FacetPanel />
           <SortDropdown value={sort} onChange={setSort} capability="search.plpV2" />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-        {products.map((p) => (
+      <div className="grid grid-cols-2 gap-5 md:grid-cols-3 lg:grid-cols-4">
+        {products.map((p: ProductView) => (
           <ProductCard key={p.key} product={p} />
         ))}
       </div>

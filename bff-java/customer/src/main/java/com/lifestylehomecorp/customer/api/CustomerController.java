@@ -56,7 +56,10 @@ public class CustomerController {
                     + "given, and the session's anonymousId so the guest's carts / shopping lists / orders "
                     + "become the new customer's) and return the raw CustomerSignInResult (customer + cart). "
                     + "The service records the customer on the session and maps a PII-safe profile. "
-                    + "POST /api/customers/signup drives the 'Create account' form; a duplicate email is a 409.",
+                    + "POST /api/customers/signup drives the 'Create account' form; a duplicate email is a 409. The "
+                    + "response's activeCartId is the guest cart that just became the customer's — null means the "
+                    + "session had NO guest basket (nothing created yet, or it was already signed in as someone else: "
+                    + "sign out first); the note field says which.",
             hint = "Docs: Customers — create (sign up) a Customer with a CustomerDraft; anonymousId "
                     + "(docs.commercetools.com/api/projects/customers#create-sign-up-customer).")
     @PostMapping("/api/customers/signup")
@@ -72,7 +75,9 @@ public class CustomerController {
                     + "anonymousCartSignInMode) and return the raw CustomerSignInResult: the customer AND their "
                     + "RECALCULATED active cart. Sign-in authenticates and returns state — it is not a token; "
                     + "the BFF session holds who is signed in. POST /api/customers/login drives the sign-in "
-                    + "form; wrong email or password → the same vague 400 (no user enumeration).",
+                    + "form; wrong email or password → the same vague 400 (no user enumeration). A signed-in session "
+                    + "has no guest basket to hand over — sign out (POST /api/session/sign-out) before demoing the "
+                    + "basket following the shopper; the response's note explains the outcome.",
             hint = "Docs: Customers — authenticate (sign in) a Customer; CustomerSignInResult "
                     + "(docs.commercetools.com/api/projects/customers#authenticate-sign-in-customer).")
     @PostMapping("/api/customers/login")

@@ -1,9 +1,12 @@
 package com.lifestylehomecorp.cart.api;
 
+import com.lifestylehomecorp.cart.api.dto.ActiveCartView;
 import com.lifestylehomecorp.cart.api.dto.AddBundleRequest;
 import com.lifestylehomecorp.cart.api.dto.AddLineItemRequest;
 import com.lifestylehomecorp.cart.api.dto.CartView;
 import com.lifestylehomecorp.cart.api.dto.ChangeQuantityRequest;
+import com.lifestylehomecorp.cart.api.dto.CustomerEmailRequest;
+import com.lifestylehomecorp.cart.api.dto.PickupLocationView;
 import com.lifestylehomecorp.cart.api.dto.DiscountCodeRequest;
 import com.lifestylehomecorp.cart.api.dto.SetChannelRequest;
 import com.lifestylehomecorp.cart.api.dto.SetInventoryModeRequest;
@@ -74,7 +77,7 @@ public class CartController {
     @PostMapping("/api/cart/line-items")
     public CartView addLineItem(@RequestBody AddLineItemRequest req) {
         long qty = req.quantity() == null ? 1L : req.quantity();
-        return CartViewMapper.toView(cartService.addLineItem(req.sku(), qty));
+        return CartViewMapper.toView(cartService.addLineItem(req.sku(), qty, req.distributionChannelKey(), req.supplyChannelKey()));
     }
 
     @PatchMapping("/api/cart/line-items/{lineItemId}")
@@ -139,7 +142,10 @@ public class CartController {
             description = "Set the per-line fulfilment channel: setLineItemDistributionChannel drives the "
                     + "channel PRICE (the S2/S3 channel price, now shopper-chosen), setLineItemSupplyChannel "
                     + "sets the inventory SOURCE / pickup location — the two channel roles (BOPIS). "
-                    + "PUT /api/cart/line-items/{id}/channel picks deliver-by-shipping vs pick-up-in-store.",
+                    + "PUT /api/cart/line-items/{id}/channel picks deliver-by-shipping vs pick-up-in-store: a key "
+                    + "sets the channel, an empty string removes it (back to delivery). The storefront offers the "
+                    + "choice on the PDP (POST /api/cart/line-items also takes the two keys) AND per line in the "
+                    + "cart; GET /api/cart/pickup-locations lists the supply channels that have an address.",
             hint = "Docs: Carts — setLineItemDistributionChannel / setLineItemSupplyChannel "
                     + "(docs.commercetools.com/api/projects/carts#set-lineitem-distributionchannel).")
     @PutMapping("/api/cart/line-items/{lineItemId}/channel")
@@ -168,7 +174,11 @@ public class CartController {
             title = "Set the shipping address", tier = "T1", capability = "cart.address",
             description = "Set the delivery address via setShippingAddress (country + fields). The address is "
                     + "the input to shipping-method matching (Zones) and tax — once set, the cart gains a "
-                    + "taxedPrice. PUT /api/cart/shipping-address drives the address form.",
+                    + "taxedPrice, and the response carries shippingAddress. The service then settles the "
+                    + "delivery choice like a real storefront: it keeps a still-matching method, else selects "
+                    + "the project's DEFAULT shipping method, else the first match (4.8's read — until 4.8 is "
+                    + "implemented the address is saved and the method waits). PUT /api/cart/shipping-address "
+                    + "drives the checkout's address step.",
             hint = "Docs: Carts — setShippingAddress (docs.commercetools.com/api/projects/carts#set-shipping-address).")
     @PutMapping("/api/cart/shipping-address")
     public CartView setShippingAddress(@RequestBody ShippingAddressRequest req) {
@@ -181,9 +191,11 @@ public class CartController {
             module = "cart", session = "Session 4", taskNumber = 8,
             title = "Shipping method: match & select", tier = "T1", capability = "cart.shipping",
             description = "List the shipping methods valid for the cart via shippingMethods().matchingCart() "
-                    + "(a GET like S1–S3 — Zones + predicate + value/score tiers), then PUT "
-                    + "/api/cart/shipping-method with the chosen id (setShippingMethod adds shippingInfo to "
-                    + "totalPrice). GET /api/cart/shipping-methods returns the selectable options.",
+                    + "(a GET like S1–S3 — Zones + predicate + value/score tiers). GET /api/cart/shipping-methods "
+                    + "returns each option with the rate that matched (price, freeAbove), isDefault and "
+                    + "selected — empty until 4.7 set an address. Setting the address already selected the "
+                    + "default method; the shopper changes it with PUT /api/cart/shipping-method and the "
+                    + "chosen id (setShippingMethod adds shippingInfo to totalPrice).",
             hint = "Docs: Shipping methods — matching-cart + Carts setShippingMethod "
                     + "(docs.commercetools.com/api/projects/shippingMethods#get-shippingmethods-for-a-cart).")
     @GetMapping("/api/cart/shipping-methods")
@@ -194,6 +206,30 @@ public class CartController {
     @PutMapping("/api/cart/shipping-method")
     public CartView setShippingMethod(@RequestBody SetShippingMethodRequest req) {
         return CartViewMapper.toView(cartService.setShippingMethod(req.shippingMethodId()));
+    }
+
+    /** Pre-built plumbing (no task): where the shopper may collect — supply channels with an address (4.5). */
+    @GetMapping("/api/cart/pickup-locations")
+    public List<PickupLocationView> pickupLocations() {
+        return cartService.pickupLocations().stream().map(PickupLocationView::from).toList();
+    }
+
+    /**
+     * Pre-built plumbing (no task): the guest's contact email for checkout — Session 6's readiness wants a
+     * signed-in customer OR an email on the cart. A signed-in shopper never needs this.
+     */
+    @PutMapping("/api/cart/customer-email")
+    public CartView setCustomerEmail(@RequestBody CustomerEmailRequest req) {
+        return CartViewMapper.toView(cartService.setCustomerEmail(req.email()));
+    }
+
+    /**
+     * Pre-built plumbing (no task): after sign-in / sign-up the storefront calls this once so the customer's
+     * default address (5.5) lands on the cart (4.7) and a delivery method is selected (4.8). Idempotent.
+     */
+    @PostMapping("/api/cart/prefill")
+    public CartView prefill() {
+        return CartViewMapper.toView(cartService.prefillFromAccount());
     }
 
     @TaskDescription(
@@ -235,5 +271,22 @@ public class CartController {
     @GetMapping("/api/cart")
     public CartView summary() {
         return CartViewMapper.toView(cartService.summary());
+    }
+
+    @TaskDescription(
+            module = "cart", session = "Session 4", taskNumber = 12,
+            title = "Inspect the active cart (customer or guest)", tier = "pre-built", capability = "cart.active",
+            description = "Pre-built — study it. GET /api/cart/active resolves the shopper's active cart the way the "
+                    + "PLATFORM does, not from the BFF's session pointer: query carts by customerId (signed in) or by the "
+                    + "session's anonymousId (guest) with cartState=\"Active\", sorted lastModifiedAt desc — the first is "
+                    + "THE active cart (the one sign-in merges into). The response says who owns it, its cartState, "
+                    + "whether the session pointer agrees (stale after a sign-in / sign-out / restart?), how many other "
+                    + "Active carts that identity has, and the full cart. Use it at any point in S4–S6 to see what the "
+                    + "storefront should be showing; it heals an empty session pointer.",
+            hint = "Docs: Carts — query carts (predicates on customerId / anonymousId / cartState), CartState "
+                    + "(docs.commercetools.com/api/projects/carts#cartstate).")
+    @GetMapping("/api/cart/active")
+    public ActiveCartView active() {
+        return ActiveCartView.from(cartService.inspectActiveCart());
     }
 }

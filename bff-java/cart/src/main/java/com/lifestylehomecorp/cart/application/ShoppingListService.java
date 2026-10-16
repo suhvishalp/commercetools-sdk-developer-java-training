@@ -34,9 +34,20 @@ public class ShoppingListService {
         this.session = session;
     }
 
-    /** The guest's saved list (created on first touch). */
+    /**
+     * The shopper's saved list, READ-ONLY: viewing never creates a list, an anonymousId or a session — a
+     * visitor who only browses leaves nothing behind. The list is created on the first save (addItem /
+     * saveForLater).
+     */
     public SavedList view() {
-        return ShoppingListMapper.toDomain(getOrCreate());
+        ShoppingList list;
+        if (session.isSignedIn()) {
+            list = repo.getByCustomerId(session.requireCustomerId());
+        } else {
+            String anonymousId = session.anonymousId();
+            list = anonymousId == null ? null : repo.getByAnonymousId(anonymousId);
+        }
+        return list == null ? SavedList.empty() : ShoppingListMapper.toDomain(list);
     }
 
     /** Save an item (by SKU) for later. */

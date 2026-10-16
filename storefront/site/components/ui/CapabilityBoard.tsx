@@ -13,10 +13,10 @@ export function CapabilityBoard() {
   const groups = capabilitiesBySession();
 
   return (
-    <div className="rounded-xl border border-[var(--color-border)] bg-white/70 p-5">
+    <div className="rounded-xl bg-[var(--color-cream)] p-5">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Feature status by session</h2>
-        <span className="text-xs text-[var(--color-charcoal-light)]">
+        <h2 className="text-lg">Feature status by session</h2>
+        <span className="text-xs text-[var(--color-muted)]">
           {loading ? 'checking BFF…' : 'live from /api/training/capabilities'}
         </span>
       </div>
@@ -28,32 +28,25 @@ export function CapabilityBoard() {
             <div key={g.session}>
               <div className="mb-2 flex items-baseline gap-2">
                 <span className="text-sm font-semibold">{g.session}</span>
-                <span className="text-sm text-[var(--color-charcoal-light)]">— {g.sessionName}</span>
-                <span className="ml-auto text-xs text-[var(--color-charcoal-light)]">
+                <span className="text-sm text-[var(--color-muted)]">— {g.sessionName}</span>
+                <span className="ml-auto text-xs text-[var(--color-muted)]">
                   {done}/{g.items.length}
                 </span>
               </div>
-              <ul className="divide-y divide-[var(--color-border)] rounded-lg border border-[var(--color-border)]">
+              <ul className="divide-y divide-[var(--color-border)] rounded-xl border border-[var(--color-border)] bg-white">
                 {g.items.map((meta) => {
                   const unlocked = isUnlocked(meta.capability);
                   return (
                     <li key={meta.capability} className="flex items-center justify-between gap-3 px-3 py-2">
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium">
-                          <code>{meta.capability}</code>
+                          <code className="font-mono">{meta.capability}</code>
                         </p>
-                        <p className="truncate text-xs text-[var(--color-charcoal-light)]">
-                          {meta.taskLabel} · <code>{meta.bffEndpoint}</code>
+                        <p className="truncate text-xs text-[var(--color-muted)]">
+                          {meta.taskLabel} · <code className="font-mono">{meta.bffEndpoint}</code>
                         </p>
                       </div>
-                      <a
-                        href={`?focus=${meta.capability}`}
-                        className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${
-                          unlocked
-                            ? 'bg-[var(--color-sage)]/25 text-[var(--color-sage-dark)]'
-                            : 'bg-[var(--color-cream-dark)] text-[var(--color-charcoal-light)]'
-                        }`}
-                      >
+                      <a href={`?focus=${meta.capability}`} className={`pill shrink-0 ${unlocked ? 'pill-teal' : 'pill-unlock'}`}>
                         {unlocked ? 'live' : (<span className="inline-flex items-center gap-1"><Lock size={11} /> locked</span>)}
                       </a>
                     </li>

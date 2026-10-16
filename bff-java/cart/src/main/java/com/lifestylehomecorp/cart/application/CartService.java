@@ -8,17 +8,25 @@ import com.commercetools.api.models.cart.CartSetLineItemDistributionChannelActio
 import com.commercetools.api.models.cart.CartSetLineItemInventoryModeActionBuilder;
 import com.commercetools.api.models.cart.CartSetLineItemSupplyChannelActionBuilder;
 import com.commercetools.api.models.cart.CartSetShippingAddressActionBuilder;
+import com.commercetools.api.models.cart.CartSetCustomerEmailActionBuilder;
 import com.commercetools.api.models.cart.CartSetShippingMethodActionBuilder;
 import com.commercetools.api.models.cart.CartUpdateAction;
 import com.commercetools.api.models.cart.InventoryMode;
 import com.commercetools.api.models.cart.LineItem;
+import com.commercetools.api.models.channel.Channel;
 import com.commercetools.api.models.common.BaseAddress;
+import com.commercetools.api.models.common.Address;
 import com.commercetools.api.models.common.BaseAddressBuilder;
 import com.commercetools.api.models.recurring_order.PriceSelectionMode;
+import com.lifestylehomecorp.cart.domain.ActiveCart;
 import com.lifestylehomecorp.cart.domain.CartSummary;
+import com.lifestylehomecorp.cart.domain.PickupLocation;
 import com.lifestylehomecorp.cart.domain.ShippingOption;
+import com.lifestylehomecorp.platform.errors.TaskNotImplementedException;
 import com.lifestylehomecorp.platform.session.ShopperSession;
 import io.vrap.rmf.base.client.ApiHttpException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -27,7 +35,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.LongFunction;
-import com.lifestylehomecorp.platform.errors.TaskNotImplementedException;
 
 /**
  * Cart orchestration: composes update actions and maps the SDK cart to the domain. It OWNS the
@@ -45,16 +52,22 @@ public class CartService {
     private static final String FIELD_BUNDLE_ID = "bundleId"; // on the parent line — the bundle identity
     private static final String FIELD_PARENT_ID = "parentId";  // on each child line — points at the parent
 
+    private static final Logger log = LoggerFactory.getLogger(CartService.class);
+
     private final CartRepository repo;
     private final ShippingRepository shippingRepo;
     private final BundleRepository bundleRepo;
+    private final CustomerAddressRepository customerAddresses;
+    private final ChannelReadRepository channels;
     private final ShopperSession session;
 
-    public CartService(CartRepository repo, ShippingRepository shippingRepo,
-                       BundleRepository bundleRepo, ShopperSession session) {
+    public CartService(CartRepository repo, ShippingRepository shippingRepo, BundleRepository bundleRepo,
+                       CustomerAddressRepository customerAddresses, ChannelReadRepository channels, ShopperSession session) {
         this.repo = repo;
         this.shippingRepo = shippingRepo;
         this.bundleRepo = bundleRepo;
+        this.customerAddresses = customerAddresses;
+        this.channels = channels;
         this.session = session;
     }
 
@@ -81,6 +94,52 @@ public class CartService {
         return CartMapper.toDomain(cart);
     }
 
+    /**
+     * 4.12 (pre-built) — the active cart as the PLATFORM sees it, for inspection: query by identity
+     * (customerId when signed in, the session's anonymousId as a guest) with cartState=Active, newest
+     * first. Compares with the BFF's session pointer — and heals a missing pointer (e.g. after a sign-in
+     * whose result carried no cart) by adopting the platform's active cart. A guest whose session never
+     * minted an anonymousId has no cart anywhere.
+     */
+    public ActiveCart inspectActiveCart() {
+        boolean signedIn = session.isSignedIn();
+        String identity = signedIn ? "customer" : "guest";
+        String anonymousId = signedIn ? null : session.anonymousId();
+        List<Cart> active = signedIn ? repo.findActiveCartsOfCustomer(session.customerIdOrNull())
+                : anonymousId == null ? List.of() : repo.findActiveCartsOfGuest(anonymousId);
+        String sessionCartId = session.cartIdOrNull();
+        if (active.isEmpty()) {
+            String note = signedIn
+                    ? "This customer has no Active cart on the platform" + (sessionCartId != null
+                            ? " — the session still points at " + sessionCartId + " (ordered, merged or someone else's)."
+                            : ". POST /api/cart creates one as the customer's.")
+                    : anonymousId == null
+                            ? "No guest identity yet — the session mints an anonymousId with the first cart (4.1) or wishlist."
+                            : "No Active cart carries this guest's anonymousId" + (sessionCartId != null
+                                    ? " — the session's cart " + sessionCartId + " was handed to a customer or ordered."
+                                    : " — create one with POST /api/cart (4.1).");
+            return new ActiveCart(identity, CartSummary.empty(), null, sessionCartId, sessionCartId == null, false, 0, note);
+        }
+        Cart resolved = active.get(0);
+        boolean matches = resolved.getId().equals(sessionCartId);
+        boolean repointed = false;
+        if (sessionCartId == null) {
+            session.setActiveCart(resolved.getId()); // self-heal: the platform knows the cart, the session forgot it
+            repointed = true;
+        }
+        int others = active.size() - 1;
+        String note = (signedIn ? "The customer's" : "The guest's") + " most recently modified Active cart"
+                + (others > 0 ? " (" + others + " older Active cart" + (others == 1 ? "" : "s") + " also exist — sign-in merges into THIS one)" : "")
+                + (repointed ? "; the session had no cart and now points at it."
+                        : matches ? "; the session pointer agrees." : "; the session points elsewhere (" + sessionCartId + ") — stale pointer.");
+        return new ActiveCart(identity, CartMapper.toDomain(resolved), stateOf(resolved), sessionCartId,
+                matches || repointed, repointed, others, note);
+    }
+
+    private static String stateOf(Cart cart) {
+        return cart.getCartState() == null ? null : cart.getCartState().getJsonName();
+    }
+
     /** 4.10 — the cart summary. Never throws on an empty (or not-yet-created) cart. */
     public CartSummary summary() {
         // TODO (Task 4.10): return the active cart mapped to a domain summary (subtotal / savings /
@@ -91,7 +150,23 @@ public class CartService {
 
     /** 4.2 — add a line item (SKU × qty). */
     public CartSummary addLineItem(String sku, long quantity) {
-        return mutate(List.of(CartAddLineItemActionBuilder.of().sku(sku).quantity(quantity).build()));
+        return addLineItem(sku, quantity, null, null);
+    }
+
+    /**
+     * 4.2 + 4.5 — add a line item with its fulfilment chosen up front: the distribution channel prices the
+     * line from the channel the storefront displayed (otherwise the cart falls back to the default price),
+     * the supply channel sources it from a pickup store. Either key may be null.
+     */
+    public CartSummary addLineItem(String sku, long quantity, String distributionKey, String supplyKey) {
+        var action = CartAddLineItemActionBuilder.of().sku(sku).quantity(quantity);
+        if (distributionKey != null && !distributionKey.isBlank()) {
+            action.distributionChannel(c -> c.key(distributionKey));
+        }
+        if (supplyKey != null && !supplyKey.isBlank()) {
+            action.supplyChannel(c -> c.key(supplyKey));
+        }
+        return mutate(List.of(action.build()));
     }
 
     /** 4.2 — change a line's quantity (0 removes it). */
@@ -148,18 +223,48 @@ public class CartService {
         throw new TaskNotImplementedException("4.4");
     }
 
-    /** 4.5 — per-line fulfilment: distribution channel (price) and/or supply channel (source/pickup). */
+    /**
+     * 4.5 — per-line fulfilment, changeable after adding: distribution channel (price) and/or supply channel
+     * (source / pickup location). {@code null} leaves a channel as it is; an EMPTY string removes it — the
+     * storefront's "Delivery" choice clears the supply channel so stock comes from the default inventory.
+     */
     public CartSummary setLineItemChannel(String lineItemId, String distributionKey, String supplyKey) {
         List<CartUpdateAction> actions = new ArrayList<>();
-        if (distributionKey != null && !distributionKey.isBlank()) {
-            actions.add(CartSetLineItemDistributionChannelActionBuilder.of()
-                    .lineItemId(lineItemId).distributionChannel(c -> c.key(distributionKey)).build());
+        if (distributionKey != null) {
+            var a = CartSetLineItemDistributionChannelActionBuilder.of().lineItemId(lineItemId);
+            if (!distributionKey.isBlank()) {
+                a.distributionChannel(c -> c.key(distributionKey));
+            }
+            actions.add(a.build()); // no channel = remove
         }
-        if (supplyKey != null && !supplyKey.isBlank()) {
-            actions.add(CartSetLineItemSupplyChannelActionBuilder.of()
-                    .lineItemId(lineItemId).supplyChannel(c -> c.key(supplyKey)).build());
+        if (supplyKey != null) {
+            var a = CartSetLineItemSupplyChannelActionBuilder.of().lineItemId(lineItemId);
+            if (!supplyKey.isBlank()) {
+                a.supplyChannel(c -> c.key(supplyKey));
+            }
+            actions.add(a.build()); // no channel = remove
         }
-        return actions.isEmpty() ? summary() : mutate(actions);
+        return actions.isEmpty() ? activeCart() : mutate(actions);
+    }
+
+    /**
+     * 4.5 — where the shopper may collect: the supply channels that have an ADDRESS. A warehouse holds stock
+     * but has no shop floor; a pickup store has both. (Pre-built plumbing for the storefront's fulfilment
+     * choice; the cart module reads channels itself — domain modules depend on platform only.)
+     */
+    public List<PickupLocation> pickupLocations() {
+        List<PickupLocation> out = new ArrayList<>();
+        for (Channel ch : channels.supplyChannels()) {
+            if (ch.getAddress() == null) {
+                continue;
+            }
+            var a = ch.getAddress();
+            String street = a.getStreetName() == null ? null
+                    : a.getStreetName() + (a.getStreetNumber() != null ? " " + a.getStreetNumber() : "");
+            out.add(new PickupLocation(ch.getId(), ch.getKey(), CartMapper.localizedOr(ch.getName(), ch.getKey()),
+                    CartMapper.localizedOr(ch.getDescription(), null), street, a.getCity(), a.getCountry()));
+        }
+        return out;
     }
 
     /** 4.6 — per-line inventory mode override (None / ReserveOnCart / ReserveOnOrder / TrackOnly). */
@@ -170,7 +275,13 @@ public class CartService {
         throw new TaskNotImplementedException("4.6");
     }
 
-    /** 4.7 — set the shipping address (enables shipping matching + tax → taxedPrice). */
+    /**
+     * 4.7 — set the shipping address (enables shipping matching + tax → taxedPrice), then settle the
+     * delivery choice the way a real storefront does. The platform refuses an address the current method
+     * has no rate for (another zone / currency), so a selected method is cleared in the SAME update as the
+     * address; afterwards the shopper's previous method is re-applied if it still matches, else the
+     * platform's default method, else the first match. The shopper can still change it (4.8's PUT).
+     */
     public CartSummary setShippingAddress(AddressInput in) {
         BaseAddress address = BaseAddressBuilder.of()
                 .country(in.country())
@@ -181,21 +292,107 @@ public class CartService {
                 .postalCode(in.postalCode())
                 .city(in.city())
                 .build();
-        return mutate(List.of(CartSetShippingAddressActionBuilder.of().address(address).build()));
+        CartSummary current = activeCart();
+        List<CartUpdateAction> actions = new ArrayList<>();
+        if (current.shippingMethodId() != null) {
+            actions.add(CartSetShippingMethodActionBuilder.of().build()); // no method = remove the current one
+        }
+        actions.add(CartSetShippingAddressActionBuilder.of().address(address).build());
+        CartSummary updated = mutate(actions);
+        return ensureShippingMethod(updated, current.shippingMethodId());
     }
 
-    /** 4.8 — the shipping methods valid for the cart. */
+    /**
+     * 4.8 — the shipping methods valid for the cart, each with the rate that matched (zone + currency +
+     * value tier) and whether it is the one currently on the cart. Empty until an address is set — the
+     * platform matches on the shipping address, so there is nothing to offer before 4.7.
+     */
     public List<ShippingOption> shippingOptions() {
-        String cartId = session.requireCartId();
-        return shippingRepo.matchingMethods(cartId).getResults().stream()
-                .map(CartMapper::toShippingOption)
-                .toList();
+        CartSummary cart = activeCart();
+        return cart.hasShippingAddress() ? matchingOptions(cart) : List.of();
     }
 
     /** 4.8 — select a shipping method (adds shippingInfo to totalPrice). */
     public CartSummary setShippingMethod(String shippingMethodId) {
         return mutate(List.of(CartSetShippingMethodActionBuilder.of()
                 .shippingMethod(sm -> sm.id(shippingMethodId)).build()));
+    }
+
+    /** Guest checkout contact (S6 readiness wants a customer OR an email): setCustomerEmail on the cart. */
+    public CartSummary setCustomerEmail(String email) {
+        if (email == null || email.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "An email address is required.");
+        }
+        return mutate(List.of(CartSetCustomerEmailActionBuilder.of().email(email.trim()).build()));
+    }
+
+    /**
+     * Pre-fill from the account (S5 → S4): after sign-in / sign-up the storefront calls this once so the
+     * customer's default shipping address (5.5) lands on the cart (4.7) and a delivery method is selected
+     * (4.8) — the "sign in and your delivery details are already there" experience. Idempotent: an
+     * address already on the cart is kept, a guest cart is left alone, no cart is an empty summary.
+     */
+    public CartSummary prefillFromAccount() {
+        if (session.cartIdOrNull() == null) {
+            return CartSummary.empty();
+        }
+        CartSummary cart = activeCart();
+        if (!cart.hasShippingAddress() && session.isSignedIn()) {
+            Address book = customerAddresses.defaultShippingAddress(session.customerIdOrNull());
+            if (book != null) {
+                return setShippingAddress(new AddressInput(book.getCountry(), book.getFirstName(), book.getLastName(),
+                        book.getStreetName(), book.getStreetNumber(), book.getPostalCode(), book.getCity()));
+            }
+        }
+        return ensureShippingMethod(cart);
+    }
+
+    /**
+     * The delivery default: with an address on the cart, make sure a valid shipping method is selected —
+     * keep a still-matching one, else the default method, else the first match. Nothing matching (no
+     * zone ships there) leaves the cart as it is; the storefront says so. Tolerates 4.8 not being
+     * implemented yet (the matching read is the task's stub) so 4.7 keeps working on the starter.
+     */
+    CartSummary ensureShippingMethod(CartSummary cart) {
+        return ensureShippingMethod(cart, null);
+    }
+
+    /** As above, preferring {@code preferredId} (the shopper's earlier choice) when it is still valid. */
+    CartSummary ensureShippingMethod(CartSummary cart, String preferredId) {
+        if (!cart.hasShippingAddress()) {
+            return cart;
+        }
+        List<ShippingOption> options;
+        try {
+            options = matchingOptions(cart);
+        } catch (TaskNotImplementedException notYet) {
+            return cart; // 4.8's matching read is still a stub — the address is saved, the method waits
+        } catch (ApiHttpException ex) {
+            log.warn("Shipping-method matching failed for cart {} (HTTP {}); leaving the delivery choice open",
+                    cart.id(), ex.getStatusCode());
+            return cart;
+        }
+        if (options.isEmpty()) {
+            return cart;
+        }
+        if (cart.shippingMethodId() != null && options.stream().anyMatch(o -> o.id().equals(cart.shippingMethodId()))) {
+            return cart; // the current method still matches the (new) address
+        }
+        ShippingOption pick = options.stream().filter(o -> o.id().equals(preferredId)).findFirst()
+                .or(() -> options.stream().filter(ShippingOption::isDefault).findFirst())
+                .orElse(options.get(0));
+        return setShippingMethod(pick.id());
+    }
+
+    private List<ShippingOption> matchingOptions(CartSummary cart) {
+        return shippingRepo.matchingMethods(cart.id()).getResults().stream()
+                .map(m -> CartMapper.toShippingOption(m, cart.currency(), cart.shippingMethodId()))
+                .toList();
+    }
+
+    /** The active cart, mapped — the plumbing read (never the 4.10 task method, which may be a stub). */
+    private CartSummary activeCart() {
+        return CartMapper.toDomain(repo.get(session.requireCartId()));
     }
 
     /** 4.9 — apply a discount code (promo); a match lowers the total and adds a savings line. */

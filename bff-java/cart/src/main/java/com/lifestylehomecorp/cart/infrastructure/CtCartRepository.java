@@ -70,6 +70,31 @@ public class CtCartRepository implements CartRepository {
         throw new TaskNotImplementedException("4.9");
     }
 
+    /** 4.12 — a query predicate on the cart's identity + state, newest first (the platform's "active cart" rule). */
+    @Override
+    public List<Cart> findActiveCartsOfCustomer(String customerId) {
+        return apiRoot.carts().get()
+                .withWhere("customerId = :id and cartState = \"Active\"")
+                .withPredicateVar("id", customerId)
+                .withSort("lastModifiedAt desc")
+                .withLimit(10)
+                .withExpand(EXPAND_DISCOUNT_CODES)
+                .addExpand(EXPAND_RECURRENCE)
+                .executeBlocking().getBody().getResults();
+    }
+
+    @Override
+    public List<Cart> findActiveCartsOfGuest(String anonymousId) {
+        return apiRoot.carts().get()
+                .withWhere("anonymousId = :id and cartState = \"Active\"")
+                .withPredicateVar("id", anonymousId)
+                .withSort("lastModifiedAt desc")
+                .withLimit(10)
+                .withExpand(EXPAND_DISCOUNT_CODES)
+                .addExpand(EXPAND_RECURRENCE)
+                .executeBlocking().getBody().getResults();
+    }
+
     @Override
     public Cart removeDiscountCode(String cartId, Long version, String discountCodeId) {
         // TODO (Task 4.9): POST a CartUpdate with a CartRemoveDiscountCode action referencing the

@@ -8,11 +8,12 @@ import { bffGet } from '@/lib/bff/client';
 import { Heart } from '@/components/ui/icons';
 
 /**
- * ♡ Save-for-later on the PDP, gated on cart.shoppingList. Resolves the SKU from the variant matrix
- * (the storefront works in product keys; the list saves by SKU) and adds it to the guest wishlist.
- * Locked → opens the unlock dialog.
+ * ♡ Save-for-later, gated on cart.shoppingList. Resolves the SKU from the variant matrix (the storefront
+ * works in product keys; the list saves by SKU) and adds it to the guest wishlist. Locked → opens the
+ * unlock dialog. `variant="icon"` is the small white disc on a product card; the default is the PDP's
+ * round button next to Add to bag.
  */
-export function WishlistButton({ productKey, sku }: { productKey?: string; sku?: string }) {
+export function WishlistButton({ productKey, sku, variant = 'default' }: { productKey?: string; sku?: string; variant?: 'default' | 'icon' }) {
   const { loading, unlocked, meta } = useCapability('cart.shoppingList');
   const { open } = useUnlockDialog();
   const { save } = useShoppingList();
@@ -50,19 +51,22 @@ export function WishlistButton({ productKey, sku }: { productKey?: string; sku?:
   }
 
   const label = state === 'saved' ? 'Saved ✓' : 'Save for later';
+  const saved = state === 'saved';
+  const shape =
+    variant === 'icon'
+      ? 'grid h-9 w-9 place-items-center rounded-full bg-white shadow-[0_2px_8px_rgba(25,23,65,0.12)]'
+      : 'grid h-[54px] w-[54px] shrink-0 place-items-center rounded-full border-[1.5px] border-[var(--color-border)] bg-white hover:border-[var(--color-violet)]';
   return (
     <button
       onClick={onClick}
       disabled={state === 'saving'}
       title={label}
       aria-label={label}
-      className={`grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-[var(--color-border)] transition-colors disabled:opacity-60 ${
-        state === 'saved'
-          ? 'border-[var(--color-terra)] text-[var(--color-terra)]'
-          : 'text-[var(--color-charcoal-light)] hover:border-[var(--color-terra)] hover:text-[var(--color-terra)]'
-      }`}
+      className={`${shape} transition disabled:opacity-60 ${
+        saved ? 'text-[var(--color-violet)]' : 'text-[var(--color-muted)] hover:text-[var(--color-violet)]'
+      } ${unlocked ? '' : 'opacity-80'}`}
     >
-      <Heart size={18} />
+      <Heart size={variant === 'icon' ? 17 : 20} fill={saved ? 'currentColor' : 'none'} />
     </button>
   );
 }

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { TaskItem, getProgress, getProgressAll, getProject, getTasks, getTelemetryAll, tryEndpoint } from './api/bff';
+import { TaskItem, getProgress, getProgressAll, getProject, getTasks, getTelemetryAll, getTrackMeta, tryEndpoint } from './api/bff';
+import { setTrack } from './lib/track';
 import { usePoll } from './hooks/usePoll';
 import { flattenTasks } from './lib/ui';
 import { X } from './lib/icons';
@@ -19,6 +20,9 @@ export function App() {
   // Inspector is hidden by default; opens on demand (toggle) or automatically on Try It.
   const [inspectorOpen, setInspectorOpen] = useState(false);
 
+  // Which track this backend is (BFF or CIL) — re-checked so swapping the backend relabels Canvas live.
+  const metaF = usePoll(getTrackMeta, 15000);
+  setTrack(metaF.data?.ok ? metaF.data.data : null);
   const tasksF = usePoll(getTasks, 8000);
   const projectF = usePoll(getProject, 8000);
   const progressF = usePoll(getProgress, 3000);

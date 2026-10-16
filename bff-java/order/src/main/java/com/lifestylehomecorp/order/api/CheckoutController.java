@@ -33,7 +33,10 @@ public class CheckoutController {
                     + "futureOrderNumber } } under a bearer token carrying manage_sessions (CheckoutTokenProvider), "
                     + "and return the raw session (id · expiryAt · state). The service verifies the cart is the "
                     + "shopper's, runs readiness, and returns { sessionId, projectKey, region, expiresAt, orderNumber } — "
-                    + "everything the Browser SDK's paymentFlow needs. POST /api/checkout/session renders the widget.",
+                    + "everything the Browser SDK's paymentFlow needs. POST /api/checkout/session renders the widget. "
+                    + "An unready cart is a 409 naming what is missing — set the address (4.7, which also selects "
+                    + "the default shipping method) and sign in or set a guest email first; the storefront's "
+                    + "checkout stepper walks exactly these steps.",
             hint = "Docs: Checkout — Integrate Checkout → Create Checkout Sessions "
                     + "(docs.commercetools.com/checkout/installing-checkout#create-checkout-sessions).")
     @PostMapping("/api/checkout/session")

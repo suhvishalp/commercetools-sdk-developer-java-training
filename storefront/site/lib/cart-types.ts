@@ -33,6 +33,17 @@ export interface CartLineView {
   children: CartLineView[];
 }
 
+/** An address on the cart (shipping / billing) — 4.7. */
+export interface CartAddressView {
+  firstName: string | null;
+  lastName: string | null;
+  streetName: string | null;
+  streetNumber: string | null;
+  postalCode: string | null;
+  city: string | null;
+  country: string | null;
+}
+
 export interface CartView {
   id: string | null;
   version: number | null;
@@ -45,6 +56,62 @@ export interface CartView {
   shipping: MoneyView | null;
   tax: MoneyView | null;
   total: MoneyView | null;
+  /** The selected shipping method's name, or null when none is set yet (4.8). */
   shippingMethod: string | null;
+  /** The selected shipping method's id — matches ShippingOptionView.id. */
+  shippingMethodId: string | null;
+  shippingAddress: CartAddressView | null;
+  billingAddress: CartAddressView | null;
+  /** Set once a customer owns the cart (sign-in / sign-up, S5); null for a guest cart. */
+  customerId: string | null;
+  /** The customer's email, or the guest's checkout email. */
+  customerEmail: string | null;
+  /** "customer" | "guest" | null (no cart yet). */
+  owner: 'customer' | 'guest' | null;
   discountCodes: string[];
+}
+
+/** A selectable delivery option (GET /api/cart/shipping-methods) — 4.8. */
+export interface ShippingOptionView {
+  id: string;
+  key: string | null;
+  name: string;
+  description: string | null;
+  isDefault: boolean;
+  /** The rate that matched the cart (zone + currency + value tier), if the BFF could resolve one. */
+  price: MoneyView | null;
+  /** Order value from which this rate is waived, if the method has a threshold. */
+  freeAbove: MoneyView | null;
+  /** Whether the cart currently carries this method. */
+  selected: boolean;
+}
+
+/** Body of PUT /api/cart/shipping-address. */
+export interface ShippingAddressInput {
+  country: string;
+  firstName?: string;
+  lastName?: string;
+  streetName?: string;
+  streetNumber?: string;
+  postalCode?: string;
+  city?: string;
+}
+
+/** A place to collect from (GET /api/cart/pickup-locations) — a supply channel with an address (4.5). */
+export interface PickupLocationView {
+  id: string;
+  key: string;
+  name: string;
+  description: string | null;
+  street: string | null;
+  city: string | null;
+  country: string | null;
+}
+
+/** Fulfilment choice for a line (4.5): delivery, or collection from a pickup location (by channel key). */
+export interface FulfilmentChoice {
+  /** Prices the line from this channel — the price the PLP / PDP displayed. */
+  distributionChannelKey?: string | null;
+  /** A pickup store's channel key, or "" to go back to delivery (default stock). */
+  supplyChannelKey?: string | null;
 }
