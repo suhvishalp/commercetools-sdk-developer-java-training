@@ -15,8 +15,8 @@ anything here — your progress is tracked by the course dashboard, not by git.
 | **`solution`** | The reference answers. Peek only if you're stuck — try it yourself first. |
 
 ```bash
-git clone git@github.com:commercetools/commeretools-sdk-developer-java-training.git
-cd commeretools-sdk-developer-java-training   # you're on main (the starter)
+git clone git@github.com:commercetools/commercetools-sdk-developer-java-training.git
+cd commercetools-sdk-developer-java-training   # you're on main (the starter)
 git switch solution                           # to see the answers
 git switch main                               # back to your work
 ```
