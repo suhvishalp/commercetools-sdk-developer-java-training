@@ -42,7 +42,7 @@ clone and run them locally.
 | Repository | What it is | Session |
 |---|---|---|
 | [`sphere-b2c-connector-2026`](https://github.com/commercetools/sphere-b2c-connector-2026) | The cart-rules **Service** app (an API Extension's production home) and the order-events **Event** app (a Subscription-fed handler). | 8 · 9 |
-| [`sphere-price-feed-connector-2026`](https://github.com/commercetools/sphere-price-feed-connector-2026) | The nightly price-feed **Job** app (CSV → Import API). | 8 · 9 |
+| [`lhc-price-feed-connector`](https://github.com/commercetools/lhc-price-feed-connector) | The nightly price-feed **Job** app (CSV → Import API). | 8 · 9 |
 
 ## Prerequisites
 - **JDK 17** and **Maven** · **Node 18+** and **npm** · **Git**
