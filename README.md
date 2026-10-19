@@ -1,18 +1,11 @@
-# commercetools B2C Developer — Course Repo
+# The commercetools SDK Developer — Java training
 
-Build a real storefront's backend — a **BFF** (Backend-for-Frontend) on commercetools — **method by
-method, with AI as your co-pilot**. As you implement each task, a capability unlocks and a section of
-the live **storefront** lights up.
+Welcome. Over three days you will build the backend of a real storefront — a **BFF** (Backend-for-Frontend)
+on commercetools — **one method at a time, with an AI coding assistant as your co-pilot**. Every task you
+complete unlocks a capability, and a section of the live **storefront** lights up.
 
-> **This release covers Sessions 1–7 — "Ignition" (Platform, SDK, Project & Stores), "The Catalogue"
-> (Product & Category reads), "Find It" (store-scoped, faceted, searchable discovery via the Product
-> Search API over GraphQL), "Fill the Basket" (the cart — the course's first write surface), "Know
-> Your Customer" (identity: register, sign in, cart merge, customer pricing, the session boundary),
-> "Close the Deal" (Checkout, Orders & Payments — the Checkout Session, your own order number, the
-> payment ledger, capture, and the order state machine), and "Beyond the BFF" (the four extension
-> mechanisms: Custom Fields & Objects, Messages and an idempotent consumer, an API Extension the
-> platform calls before it saves your cart, and the Import API).**
-> Sessions 8 and 9 move the same handlers onto commercetools Connect.
+This repository is **read-only** for participants: clone it and work locally. You never need to push
+anything here — your progress is tracked by the course dashboard, not by git.
 
 ## Branches
 
@@ -22,10 +15,14 @@ the live **storefront** lights up.
 | **`solution`** | The reference answers. Peek only if you're stuck — try it yourself first. |
 
 ```bash
-git clone <repo-url> && cd <repo>       # you're on main (the starter)
-git switch solution                     # to see the answers
-git switch main                         # back to your work
+git clone git@github.com:commercetools/commeretools-sdk-developer-java-training.git
+cd commeretools-sdk-developer-java-training   # you're on main (the starter)
+git switch solution                           # to see the answers
+git switch main                               # back to your work
 ```
+
+Because the repository is read-only, keep your work local. If you like to commit as you go, create a
+branch of your own (`git switch -c my-work`) — nothing has to leave your laptop.
 
 ## What's inside
 
@@ -35,14 +32,26 @@ git switch main                         # back to your work
 | [`commerce-canvas/`](commerce-canvas/) | Your **progress dashboard + "Try It" console** — shows tasks, capabilities, and live requests. | No — run it. |
 | [`storefront/`](storefront/) | The **live store** that lights up as your capabilities unlock. | No — run it. |
 
+## Related repositories (Day 3 — commercetools Connect)
+
+Sessions 8 and 9 move the Session-7 handlers onto **commercetools Connect**. The connectors live in their
+own repositories because Connect deploys a repository at a git tag, with `connect.yaml` at the root. They
+are read-only too: the trainer walks the code through and deploys it once into the shared project; you
+clone and run them locally.
+
+| Repository | What it is | Session |
+|---|---|---|
+| [`sphere-b2c-connector-2026`](https://github.com/commercetools/sphere-b2c-connector-2026) | The cart-rules **Service** app (an API Extension's production home) and the order-events **Event** app (a Subscription-fed handler). | 8 · 9 |
+| [`sphere-price-feed-connector-2026`](https://github.com/commercetools/sphere-price-feed-connector-2026) | The nightly price-feed **Job** app (CSV → Import API). | 8 · 9 |
+
 ## Prerequisites
-- **JDK 17** and **Maven** · **Node 18+** and **npm**
+- **JDK 17** and **Maven** · **Node 18+** and **npm** · **Git**
 - A **commercetools project** + **Merchant Center** access *(provided for the course)*
-- An **AI coding tool** (Claude Code or Codex) with the **commercetools plugin** *(installed in Session 1)*
+- An **AI coding tool** (Claude Code, Codex, Copilot, Cursor or similar) with the **commercetools plugin** *(installed in Session 1)* — every task also works without one.
 - You've completed the **Platform Foundations** prerequisite.
 
 ## Setup (in order)
-1. **Clone** this repo (you land on `main`, the starter).
+1. **Clone** this repository (you land on `main`, the starter).
 2. **Create your API client** in Merchant Center (*Settings → Developer settings → API clients*). Name it with **your own name** — that's your identity in the progress tracker. Copy the credentials (shown once).
 3. **Configure `.env`:** in `bff-java/`, copy `.env.example` to `.env` and paste your credentials.
 4. **Install the AI toolchain:** in your editor, add the commercetools plugin (see [`bff-java/README.md`](bff-java/README.md)).
@@ -64,6 +73,6 @@ cd storefront/site && npm install && npm run dev
 2. Implement the **one stubbed method** in `bff-java` — **ground it on the Knowledge MCP; never guess the API.**
 3. Hit **Try It** in Canvas → the endpoint returns `200` → the capability unlocks → the storefront section lights up.
    *(From Session 4 the tasks are **writes** — Try It sends a pre-filled JSON body you can edit.)*
-4. **Explain it back** in your own words. Stuck? compare with the `solution` branch.
+4. **Explain it back** in your own words. Stuck? Compare with the `solution` branch.
 
 Per-project detail: [`bff-java/README.md`](bff-java/README.md) · [`commerce-canvas/README.md`](commerce-canvas/README.md) · [`storefront/README.md`](storefront/README.md).
