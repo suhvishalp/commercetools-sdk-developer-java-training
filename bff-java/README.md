@@ -72,6 +72,11 @@ Health check: `GET http://localhost:8081/api/project` should return the project 
 This applies to **every task**. The app ships with **Spring Boot DevTools**, which auto-restarts (~1–2s)
 when compiled classes change — so you never run `mvn clean install` after a task.
 
+0. **Open `bff-java/pom.xml` as a project** (File → Open → pick the `pom.xml` → *Open as Project*). If the run
+   arrow stays grey and there is no run configuration, IntelliJ did not link the Maven build: right-click
+   `pom.xml` → **Add as Maven Project** (or Maven tool window → **+**), wait for the import, then the ten
+   modules appear and the green ▶ shows on `BffApplication`. Set the configuration's **Working directory**
+   to the `bff-java` folder (where `.env` lives), otherwise the credentials are not found at startup.
 1. **Run via the `BffApplication` run configuration** in IntelliJ (the green ▶ on `BffApplication`) —
    *not* the Maven `spring-boot:run` goal. This puts every module's `target/classes` on the classpath
    as directories, so DevTools watches your edits across all modules.
