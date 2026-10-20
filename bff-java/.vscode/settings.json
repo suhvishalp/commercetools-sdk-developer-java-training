@@ -1,0 +1,5 @@
+{
+  // Compile on save so DevTools sees the change (this is the default; stated here so nobody turns it off).
+  "java.autobuild.enabled": true,
+  "java.configuration.updateBuildConfiguration": "automatic"
+}

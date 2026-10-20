@@ -1,0 +1,19 @@
+{
+  // Run the full BFF from VS Code (Extension Pack for Java). Launching here, instead of
+  // `mvn -pl app spring-boot:run`, puts every module's target/classes on the classpath, so a
+  // saved edit in any module is compiled by the Java extension and Spring Boot DevTools
+  // restarts the app in a second or two — no `mvn install`, no manual restart per task.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "BFF (all modules, DevTools restart on save)",
+      "request": "launch",
+      "mainClass": "com.lifestylehomecorp.app.BffApplication",
+      "projectName": "app",
+      // spring-dotenv reads ./.env from the working directory: keep it at the bff-java root.
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    }
+  ]
+}
