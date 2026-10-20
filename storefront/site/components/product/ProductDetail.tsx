@@ -77,8 +77,14 @@ function ProductDetailInner({ slug }: { slug: string }) {
   const notInStore = Boolean(inStoreKey) && Boolean(inStore.data) && inStore.data!.status === 404;
 
   // Prefer the in-store product (store-scoped price/assortment) when available; else the global read;
-  // else a sample product so the PDP always looks real.
+  // else a sample product so the PDP always looks real while the capability is still locked or loading.
   const product = inStoreProduct ?? global ?? SAMPLE_PRODUCT;
+  // Once the PDP is live, a slug that neither the by-slug read (2.5) nor the by-key fallback (2.2) can
+  // resolve is a real "not found" — never the sample, which would look like some other product.
+  const { unlocked: pdpUnlocked } = useCapability('catalog.pdp');
+  const notFound =
+    pdpUnlocked && !global && Boolean(bySlug.data) && byKey?.status === 404 &&
+    (bySlug.data!.status === 404 || bySlug.data!.notImplemented);
   const money = (mv?: { centAmount: number; currencyCode: string } | null) =>
     mv ? formatMoney(mv.centAmount, mv.currencyCode, locale) : null;
   const recurringPriceLabel = product?.recurringPrice ? `${money(product.recurringPrice)}/mo` : null;
@@ -88,6 +94,8 @@ function ProductDetailInner({ slug }: { slug: string }) {
   const shownPrice = subscribe && product?.recurringPrice ? product.recurringPrice : product?.price;
   const ctaTotal = shownPrice ? formatMoney(shownPrice.centAmount * qty, shownPrice.currencyCode, locale) : null;
   const sku = `${product?.key?.toUpperCase().slice(0, 4) ?? 'LHC'}-0${(product?.key?.length ?? 7) + 10}`;
+
+  if (notFound) return <ProductNotFound />;
 
   return (
     <div>
@@ -371,6 +379,23 @@ function InventoryBadge({ sku }: { sku: string }) {
       <span className={`stock-dot ${onStock ? '' : '!bg-[var(--color-earth-dark)]'}`} />
       {onStock ? 'In stock · ships in 1–2 days' : 'Availability'}
     </span>
+  );
+}
+
+/** The shopper-facing 404: the address names a product this shop does not have. */
+function ProductNotFound() {
+  return (
+    <div className="surface mx-auto my-16 max-w-xl px-8 py-12 text-center">
+      <Package size={40} className="mx-auto mb-4 text-[var(--color-muted)]" />
+      <h1 className="font-display text-2xl font-semibold text-[var(--color-ink)]">We could not find that product</h1>
+      <p className="mt-3 text-[15px] text-[var(--color-muted)]">
+        The link may be out of date, or the product is no longer part of our range.
+      </p>
+      <div className="mt-8 flex flex-wrap justify-center gap-3">
+        <Link href="/products" className="btn btn-primary">Browse all products</Link>
+        <Link href="/" className="btn btn-ghost">Back to home</Link>
+      </div>
+    </div>
   );
 }
 
