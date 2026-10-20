@@ -85,6 +85,13 @@ when compiled classes change — so you never run `mvn clean install` after a ta
 3. **Hands-free:** *Settings → Build, Execution, Deployment → Compiler → "Build project automatically"*
    — then a save triggers the compile and restart, no manual build.
 
+**VS Code:** install the recommended extensions when prompted (*Extension Pack for Java* + *Spring Boot
+Extension Pack*), open the **`bff-java` folder** as the workspace, then Run and Debug (⇧⌘D) → **"BFF (all
+modules, DevTools restart on save)"** — the launch configuration ships in `.vscode/launch.json` with the
+working directory set to `bff-java`, so `.env` is found. The Java extension compiles on save and DevTools
+restarts the app; `mvn install` is never needed per task. (The Spring Boot Dashboard in the side bar lists
+`BffApplication` too and starts it the same way.)
+
 > Full `mvn clean install` is only needed when a **`pom.xml`/dependency** changes, or to clear a stale
 > build. If you run `mvn spring-boot:run` from a plain terminal instead of the IntelliJ config, edits in
 > a *sibling* module won't be picked up until you rebuild that module (`mvn install -pl <module>`).
