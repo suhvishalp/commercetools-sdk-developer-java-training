@@ -32,7 +32,7 @@ service maps them to your `domain` models.
 - `extensibility` — **your Session-7 tasks**: Custom Fields (gift message), Custom Objects (feature flags),
   Messages (order timeline) + the idempotent consumer, the API Extension registration and its cart-rules
   handler, the Import API price feed, and the extensibility decision.
-- `training` — task/progress tracking (powers Commerce Canvas). Don't edit.
+- `training` — task/progress tracking and the Commerce Canvas bundle it serves at `/canvas`. Don't edit.
 - `app` — the aggregator; runs the full BFF on **:8081**.
 
 ## Setup
@@ -67,6 +67,8 @@ them, or set them in the environment your IDE inherits.
 mvn -pl app spring-boot:run     # full BFF on http://localhost:8081
 ```
 Health check: `GET http://localhost:8081/api/project` should return the project (the worked reference).
+**Commerce Canvas** — your task dashboard and "Try It" console — is served by this BFF at
+`http://localhost:8081/canvas`; nothing else to install or start for it.
 
 ## Dev loop (fast — no reinstall per task)
 This applies to **every task**. The app ships with **Spring Boot DevTools**, which auto-restarts (~1–2s)

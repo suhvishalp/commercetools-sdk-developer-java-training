@@ -8,7 +8,7 @@ import { refreshIdentityEverywhere, useSession } from './useSession';
 
 /**
  * The signed-in customer's account (5.4 – 5.8, 5.10): profile, address book, password, email
- * verification, deletion. Reads GET /api/customers/me only while signed in; every write refreshes it.
+ * verification, deletion. Reads GET /api/account only while signed in; every write refreshes it.
  */
 export function useAccount() {
   const { signedIn } = useSession();
@@ -28,21 +28,21 @@ export function useAccount() {
 
     /** 5.4 — any subset of first name / last name / email (changing the email resets verification). */
     updateProfile(patch: { firstName?: string; lastName?: string; email?: string }) {
-      return run(() => bffPatch<CustomerView>('customers/me', patch));
+      return run(() => bffPatch<CustomerView>('account', patch));
     },
     /** 5.5 — add an address, optionally as the default shipping / billing address in the same update. */
     addAddress(input: AddressInput) {
-      return run(() => bffPost<CustomerView>('customers/me/addresses', input));
+      return run(() => bffPost<CustomerView>('account/addresses', input));
     },
     setDefaultShipping(addressId: string) {
-      return run(() => bffPut<CustomerView>(`customers/me/addresses/${encodeURIComponent(addressId)}/default`));
+      return run(() => bffPut<CustomerView>(`account/addresses/${encodeURIComponent(addressId)}/default`));
     },
     removeAddress(addressId: string) {
-      return run(() => bffDelete<CustomerView>(`customers/me/addresses/${encodeURIComponent(addressId)}`));
+      return run(() => bffDelete<CustomerView>(`account/addresses/${encodeURIComponent(addressId)}`));
     },
     /** 5.7 — change the password (signed in). */
     changePassword(currentPassword: string, newPassword: string) {
-      return run(() => bffPost<CustomerView>('customers/me/password', { currentPassword, newPassword }));
+      return run(() => bffPost<CustomerView>('account/password', { currentPassword, newPassword }));
     },
     /** 5.8 — issue a verification token (demo: returned, in production emailed) and confirm it. */
     requestEmailVerification() {
@@ -53,7 +53,7 @@ export function useAccount() {
     },
     /** 5.10 — delete the account; afterwards the session is a fresh guest. */
     async deleteAccount() {
-      const res = await bffDelete<void>('customers/me');
+      const res = await bffDelete<void>('account');
       await refreshIdentityEverywhere();
       return res;
     },

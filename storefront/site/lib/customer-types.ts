@@ -21,7 +21,7 @@ export interface CustomerAddressView {
   defaultBilling: boolean;
 }
 
-/** GET /api/customers/me — the PII-safe profile (5.4 / 5.10). */
+/** GET /api/account — the PII-safe profile (5.4 / 5.10). */
 export interface CustomerView {
   id: string;
   email: string;
