@@ -28,8 +28,7 @@ branch of your own (`git switch -c my-work`) — nothing has to leave your lapto
 
 | Folder | What it is | You edit it? |
 |---|---|---|
-| [`bff-java/`](bff-java/) | The BFF you build — a layered ("hexagonal") Spring Boot service. | **Yes** — the tasks live here. |
-| [`commerce-canvas/`](commerce-canvas/) | Your **progress dashboard + "Try It" console** — shows tasks, capabilities, and live requests. | No — run it. |
+| [`bff-java/`](bff-java/) | The BFF you build — a layered ("hexagonal") Spring Boot service. It also serves **Commerce Canvas**, your progress dashboard + "Try It" console, at `http://localhost:8081/canvas`. | **Yes** — the tasks live here. |
 | [`storefront/`](storefront/) | The **live store** that lights up as your capabilities unlock. | No — run it. |
 
 ## Related repositories (Day 3 — commercetools Connect)
@@ -56,23 +55,23 @@ clone and run them locally.
 3. **Configure `.env`:** in `bff-java/`, copy `.env.example` to `.env` and paste your credentials.
 4. **Install the AI toolchain:** in your editor, add the commercetools plugin (see [`bff-java/README.md`](bff-java/README.md)).
 
-## Run it (three terminals)
+## Run it (two terminals)
 ```bash
 # 1 · the BFF            → http://localhost:8081
+#     Commerce Canvas    → http://localhost:8081/canvas   (your dashboard + Try It, served by the BFF)
 cd bff-java && mvn -pl app spring-boot:run
 
-# 2 · Commerce Canvas    → http://localhost:5173   (your dashboard + Try It)
-cd commerce-canvas && npm install && npm run dev
-
-# 3 · the Storefront     → http://localhost:3000   (lights up as you build)
+# 2 · the Storefront     → http://localhost:3000   (lights up as you build)
 cd storefront/site && npm install && npm run dev
 ```
+In the IDE, run `BffApplication` instead of the Maven command (see `bff-java/README.md`) so a saved edit
+restarts the BFF by itself.
 
 ## How you work through a task
-1. Open **Commerce Canvas**, pick the next task.
+1. Open **Commerce Canvas** (`http://localhost:8081/canvas`), pick the next task.
 2. Implement the **one stubbed method** in `bff-java` — **ground it on the Knowledge MCP; never guess the API.**
 3. Hit **Try It** in Canvas → the endpoint returns `200` → the capability unlocks → the storefront section lights up.
    *(From Session 4 the tasks are **writes** — Try It sends a pre-filled JSON body you can edit.)*
 4. **Explain it back** in your own words. Stuck? Compare with the `solution` branch.
 
-Per-project detail: [`bff-java/README.md`](bff-java/README.md) · [`commerce-canvas/README.md`](commerce-canvas/README.md) · [`storefront/README.md`](storefront/README.md).
+Per-project detail: [`bff-java/README.md`](bff-java/README.md) · [`storefront/README.md`](storefront/README.md).

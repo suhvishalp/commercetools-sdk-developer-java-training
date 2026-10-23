@@ -32,7 +32,7 @@ public interface CustomerRepository {
 
     /**
      * Plumbing for the merge preflight (5.3): the customer with this email, or null. A server-side lookup
-     * (the BFF has the scope; a /me token could not do this) — never surfaced to the browser.
+     * (the BFF holds the scope; the browser never gets to ask) — never surfaced to the browser.
      */
     Customer findByEmail(String email);
 

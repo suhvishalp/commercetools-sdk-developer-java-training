@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * The identity boundary (Session 5 — 5.6 and 5.9): what the storefront may learn about the session,
+ * The session boundary (Session 5 — 5.6 and 5.9): what the storefront may learn about the session,
  * and the price context the catalogue applies for this shopper. Deliberately tiny — the value is the
  * decision it encodes (identity lives in the BFF session; nothing is proven by a request parameter).
  */
@@ -28,7 +28,7 @@ public class SessionController {
             title = "Customer group → customer-specific price", tier = "T2", capability = "customer.groups",
             description = "Implement the price context in SessionService.priceContext(...) and make the "
                     + "catalogue use it: the signed-in customer's group id (set on the ShopperSession at sign-in "
-                    + "or by PUT /api/customers/me/group — pre-built, a trainer/admin lever) becomes the last open "
+                    + "or by PUT /api/account/group — pre-built, a trainer/admin lever) becomes the last open "
                     + "dimension of S2's price selection, so PLP / PDP re-price for the group (the 'vip' price). "
                     + "GET /api/price-context returns the resolved tuple (currency · country · channel · "
                     + "customerGroup) so Canvas and the storefront can SHOW why a price changed. A guest resolves "
@@ -50,24 +50,26 @@ public class SessionController {
 
     @TaskDescription(
             module = "customer", session = "Session 5", taskNumber = 9,
-            title = "The identity boundary: Me API vs the BFF", tier = "T2", capability = "customer.session",
+            title = "The session boundary: where identity lives, who checks it", tier = "T2", capability = "customer.session",
             description = "Decide how the storefront stays signed in, then implement SessionService.current() "
                     + "behind GET /api/session: { signedIn, firstName, customerGroupKey } and NOTHING more. The "
-                    + "course BFF holds a client-credentials token and calls the GENERAL endpoints — so the "
-                    + "platform no longer knows which shopper is calling; the BFF does, from its session, and "
-                    + "must enforce it (which is exactly what lets it set a customer group or build the merge "
-                    + "report — things a /me token cannot). Contrast with the no-middleware pattern: password / "
-                    + "anonymous-session tokens + /me/* scopes, enforced by the platform. Delete every customerId "
-                    + "request parameter you find. POST /api/session/sign-out clears the session and mints a fresh "
-                    + "anonymousId.",
-            hint = "Docs: Me endpoints overview; Authorization — password flow, anonymous sessions, scopes "
-                    + "(docs.commercetools.com/api/me-endpoints-overview).",
+                    + "BFF holds a client-credentials token with least-privilege general scopes and calls the "
+                    + "general endpoints; the shopper's identity lives server-side in the ShopperSession, behind "
+                    + "one opaque HttpOnly lhc_session cookie. Every account handler resolves the customer from "
+                    + "the session (session.requireCustomerId()), never from a request parameter — a customerId "
+                    + "parameter is the smell to delete. That is what lets the BFF enforce rules the browser must "
+                    + "never be trusted with: set a customer group, preflight the cart merge, build the merge "
+                    + "report, filter orders by the session's customer. POST /api/session/sign-out clears the "
+                    + "session and mints a fresh anonymousId.",
+            hint = "Docs: Authorization — client credentials flow and scopes "
+                    + "(docs.commercetools.com/api/authorization, docs.commercetools.com/api/scopes); Customers — "
+                    + "authenticate (sign in) (docs.commercetools.com/api/projects/customers#authenticate-sign-in-customer).",
             decisions = {
-                    "Me API vs general endpoints — defend the BFF choice AND name the case where /me wins (no server tier, mobile-first).",
-                    "Where the session lives — an httpOnly SameSite cookie vs a bearer token in JS (XSS vs CSRF trade).",
-                    "The anonymous → authenticated transition — what happens to anonymousId at sign-in and at sign-out.",
-                    "Blast radius — what a leaked BFF token exposes (manage_customers is every customer; "
-                            + "manage_my_profile is one); a dedicated API client per BFF with minimum scopes."
+                    "Where the session lives — an httpOnly SameSite cookie vs a token held in JavaScript (XSS vs CSRF trade).",
+                    "The anonymous → authenticated transition — what carries over at sign-in (cart, wishlist) and "
+                            + "what happens to anonymousId at sign-out.",
+                    "Minimum scopes for the runtime client — a dedicated API client per BFF; a leaked token's blast "
+                            + "radius is exactly its scope list."
             })
     @GetMapping("/api/session")
     public SessionView current() {

@@ -7,9 +7,10 @@ import com.lifestylehomecorp.platform.session.ShopperSession;
 import org.springframework.stereotype.Service;
 
 /**
- * The identity boundary (5.9): projects the BFF-held {@link ShopperSession} into what the browser may
+ * The session boundary (5.9): projects the BFF-held {@link ShopperSession} into what the browser may
  * know, and exposes the resolved price context (5.6). Identity is never taken from a request — the
- * session is the single source, which is what lets the BFF enforce rules a {@code /me} token cannot.
+ * session is the single source, which is what lets the BFF enforce rules the browser must never be
+ * trusted with.
  */
 @Service
 public class SessionService {

@@ -122,20 +122,20 @@ public class CustomerController {
     @TaskDescription(
             module = "customer", session = "Session 5", taskNumber = 4,
             title = "My profile: read & update", tier = "T1", capability = "customer.profile",
-            description = "Pre-built — study it. GET /api/customers/me reads the signed-in customer (by the id "
+            description = "Pre-built — study it. GET /api/account reads the signed-in customer (by the id "
                     + "on the BFF session, customerGroup expanded) and returns the PII-safe projection; PATCH "
-                    + "/api/customers/me composes setFirstName / setLastName / changeEmail update actions "
+                    + "/api/account composes setFirstName / setLastName / changeEmail update actions "
                     + "carrying the customer's version — the S4 cart pattern on a second resource (it rides on "
                     + "task 5.5's update). changeEmail resets isEmailVerified.",
             hint = "Docs: Customers — get by ID; update actions setFirstName / changeEmail "
                     + "(docs.commercetools.com/api/projects/customers#update-actions).")
-    @GetMapping("/api/customers/me")
-    public CustomerView me() {
+    @GetMapping("/api/account")
+    public CustomerView profile() {
         return CustomerView.from(customers.profile());
     }
 
-    @PatchMapping("/api/customers/me")
-    public CustomerView updateMe(@RequestBody UpdateProfileRequest req) {
+    @PatchMapping("/api/account")
+    public CustomerView updateProfile(@RequestBody UpdateProfileRequest req) {
         return CustomerView.from(customers.updateProfile(req.firstName(), req.lastName(), req.email()));
     }
 
@@ -147,11 +147,11 @@ public class CustomerController {
                     + "version + a list of update actions, returning the raw SDK Customer (the twin of the cart's "
                     + "update). The service composes addAddress + setDefaultShippingAddress (by the address KEY, "
                     + "so both land in ONE update), removeAddress, and — via 5.4 / 5.6 — the name, email and group "
-                    + "actions. POST /api/customers/me/addresses saves an address; the default pre-fills the "
+                    + "actions. POST /api/account/addresses saves an address; the default pre-fills the "
                     + "cart's shipping address.",
             hint = "Docs: Customers — addAddress / setDefaultShippingAddress / removeAddress "
                     + "(docs.commercetools.com/api/projects/customers#add-address).")
-    @PostMapping("/api/customers/me/addresses")
+    @PostMapping("/api/account/addresses")
     public CustomerView addAddress(@RequestBody AddressRequest req) {
         return CustomerView.from(customers.addAddress(
                 new AddressInput(req.key(), req.country(), req.firstName(), req.lastName(),
@@ -160,23 +160,23 @@ public class CustomerController {
                 Boolean.TRUE.equals(req.defaultBilling())));
     }
 
-    @GetMapping("/api/customers/me/addresses")
+    @GetMapping("/api/account/addresses")
     public List<AddressView> addresses() {
         return customers.profile().addresses().stream().map(AddressView::from).toList();
     }
 
-    @PutMapping("/api/customers/me/addresses/{addressId}/default")
+    @PutMapping("/api/account/addresses/{addressId}/default")
     public CustomerView setDefaultShipping(@PathVariable String addressId) {
         return CustomerView.from(customers.setDefaultShippingAddress(addressId));
     }
 
-    @DeleteMapping("/api/customers/me/addresses/{addressId}")
+    @DeleteMapping("/api/account/addresses/{addressId}")
     public CustomerView removeAddress(@PathVariable String addressId) {
         return CustomerView.from(customers.removeAddress(addressId));
     }
 
     /** 5.6 (assign, pre-built) — a trainer/admin lever: put the customer in a group by key (e.g. "vip"). */
-    @PutMapping("/api/customers/me/group")
+    @PutMapping("/api/account/group")
     public CustomerView setGroup(@RequestBody SetGroupRequest req) {
         return CustomerView.from(customers.setCustomerGroup(req.customerGroupKey()));
     }
@@ -192,11 +192,11 @@ public class CustomerController {
                     + "production the token value is EMAILED, never returned to the browser — the course has no "
                     + "mail service, so the BFF returns it with a demo note) and resetPassword (POST "
                     + "/customers/password/reset — tokenValue + newPassword; the token is the proof). Both flows "
-                    + "invalidate every other token for the customer. POST /api/customers/me/password changes it; "
+                    + "invalidate every other token for the customer. POST /api/account/password changes it; "
                     + "POST /api/customers/password/reset-token then /reset is 'Forgot password?'.",
             hint = "Docs: Customers overview — customer password reset; Customers — change password "
                     + "(docs.commercetools.com/api/customers-overview#customer-password-reset).")
-    @PostMapping("/api/customers/me/password")
+    @PostMapping("/api/account/password")
     public CustomerView changePassword(@RequestBody ChangePasswordRequest req) {
         return CustomerView.from(customers.changePassword(req.currentPassword(), req.newPassword()));
     }
@@ -241,7 +241,7 @@ public class CustomerController {
             description = "Homework. Two halves: (1) the PII-safe projection — CustomerMapper.toProfile is the "
                     + "ONE place that decides what leaves the BFF (no password, customerNumber, externalId, custom "
                     + "fields; no email in log lines); (2) deletion — implement CustomerRepository.delete(id, "
-                    + "version) (DELETE /customers/{id}?version=…) behind DELETE /api/customers/me, after the "
+                    + "version) (DELETE /customers/{id}?version=…) behind DELETE /api/account, after the "
                     + "session check. Orders keep their customer snapshot and nothing cascades, so decide "
                     + "delete vs anonymise first. Afterwards the session is a fresh guest.",
             hint = "Docs: Customers — delete a Customer; GDPR / data erasure guidance "
@@ -255,7 +255,7 @@ public class CustomerController {
                             + "request-body capture retain sign-in bodies?",
                     "Data scope — a store-specific customer's data belongs to that store's controller."
             })
-    @DeleteMapping("/api/customers/me")
+    @DeleteMapping("/api/account")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteMe() {
         customers.deleteAccount();

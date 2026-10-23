@@ -1,6 +1,6 @@
 package com.lifestylehomecorp.customer.api.dto;
 
-/** Body for POST /api/customers/me/addresses. {@code key} is optional (one is minted); the defaults are opt-in. */
+/** Body for POST /api/account/addresses. {@code key} is optional (one is minted); the defaults are opt-in. */
 public record AddressRequest(
         String key,
         String country,
