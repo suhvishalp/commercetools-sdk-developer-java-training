@@ -20,9 +20,11 @@ import java.util.List;
 public class StoreController {
 
     private final StoreService storeService;
+    private final StoreViewMapper views; // MapStruct-generated (the course's one reference use)
 
-    public StoreController(StoreService storeService) {
+    public StoreController(StoreService storeService, StoreViewMapper views) {
         this.storeService = storeService;
+        this.views = views;
     }
 
     @TaskDescription(
@@ -36,7 +38,7 @@ public class StoreController {
                     + "(docs.commercetools.com/api/projects/stores).")
     @GetMapping("/api/stores")
     public List<StoreView> listStores() {
-        return storeService.listStores().stream().map(StoreViewMapper::toView).toList();
+        return storeService.listStores().stream().map(views::toView).toList();
     }
 
     @TaskDescription(
@@ -50,7 +52,7 @@ public class StoreController {
                     + "(docs.commercetools.com/api/projects/stores#get-store-by-key).")
     @GetMapping("/api/stores/{key}")
     public StoreView getStore(@PathVariable String key) {
-        return StoreViewMapper.toView(storeService.getStore(key));
+        return views.toView(storeService.getStore(key));
     }
 
     @TaskDescription(
@@ -76,6 +78,6 @@ public class StoreController {
             })
     @GetMapping("/api/store-context")
     public StoreContextView storeContext(@RequestParam(required = false) String store) {
-        return StoreViewMapper.toView(storeService.storeContext(store));
+        return views.toView(storeService.storeContext(store));
     }
 }

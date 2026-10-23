@@ -54,11 +54,20 @@
              Confirm newer releases via the commercetools-knowledge MCP before bumping. -->
         <commercetools.version>19.11.0</commercetools.version>
         <spring-dotenv.version>4.0.0</spring-dotenv.version>
+        <mapstruct.version>1.6.3</mapstruct.version>
         <springdoc.version>2.8.17</springdoc.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
+            <!-- MapStruct — used in ONE module (project, api layer) as the reference for generated mappers.
+                 Every other mapper in the course is hand-written on purpose: the SDK → domain mapping is the
+                 boundary participants learn to see. -->
+            <dependency>
+                <groupId>org.mapstruct</groupId>
+                <artifactId>mapstruct</artifactId>
+                <version>${mapstruct.version}</version>
+            </dependency>
             <!-- commercetools typed API + OkHttp3 HTTP client.
                  We use commercetools-okhttp-client3 (NOT the default commercetools-http-client,
                  which bundles OkHttp4) to avoid an OkHttp version clash on the Spring Boot classpath. -->
