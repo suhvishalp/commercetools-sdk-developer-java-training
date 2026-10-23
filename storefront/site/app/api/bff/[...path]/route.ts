@@ -56,7 +56,8 @@ async function forward(req: NextRequest, path: string[]): Promise<Response> {
     );
   }
   try {
-    const headers: Record<string, string> = { accept: 'application/json', 'content-type': 'application/json' };
+    // x-caller tells the BFF's trainer telemetry this attempt is a storefront page load, not Canvas Try It.
+    const headers: Record<string, string> = { accept: 'application/json', 'content-type': 'application/json', 'x-caller': 'storefront' };
     const session = req.cookies.get(SESSION_COOKIE);
     if (session) headers.cookie = `${SESSION_COOKIE}=${session.value}`;
     const init: RequestInit = { method: req.method, headers, cache: 'no-store' };

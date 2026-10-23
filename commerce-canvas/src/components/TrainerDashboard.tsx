@@ -233,6 +233,7 @@ export function TrainerDashboard({
                           {t ? `${t.title} (${t.module}·${t.taskNumber})` : signal.taskId}
                         </span>
                         <span className="ml-auto text-[10px] text-[var(--color-text-muted)]">
+                          {signal.source ? `via ${signal.source} · ` : ''}
                           {signal.callCount} call{signal.callCount === 1 ? '' : 's'}
                         </span>
                       </div>

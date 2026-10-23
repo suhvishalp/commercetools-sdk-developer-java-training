@@ -22,14 +22,28 @@ public final class ApproachContext {
     /** One task's in-flight observation: which task, and the calls seen so far. */
     public static final class Scope {
         private final String taskId;
+        private final String incomingQuery;
+        private final String source;
         private final List<ObservedCall> calls = new ArrayList<>();
 
-        private Scope(String taskId) {
+        private Scope(String taskId, String incomingQuery, String source) {
             this.taskId = taskId;
+            this.incomingQuery = incomingQuery == null ? "" : incomingQuery;
+            this.source = source == null ? "direct" : source;
         }
 
         public String taskId() {
             return taskId;
+        }
+
+        /** The BFF request's own query string (raw) — lets a rule require a predicate only when the caller asked for it. */
+        public String incomingQuery() {
+            return incomingQuery;
+        }
+
+        /** Who called the BFF endpoint: "canvas", "storefront" or "direct" (curl, tests). */
+        public String source() {
+            return source;
         }
 
         public List<ObservedCall> calls() {
@@ -44,7 +58,12 @@ public final class ApproachContext {
 
     /** Open a scope for the given task id on this thread (replaces any stale scope). */
     public static void begin(String taskId) {
-        CURRENT.set(new Scope(taskId));
+        begin(taskId, null, null);
+    }
+
+    /** Open a scope that also remembers the incoming request's query string and its caller. */
+    public static void begin(String taskId, String incomingQuery, String source) {
+        CURRENT.set(new Scope(taskId, incomingQuery, source));
     }
 
     /** The active scope on this thread, or {@code null} when none is open. */
