@@ -52,15 +52,21 @@ public class CartController {
                     + "POST a CartDraft (currency + country + store + anonymousId + inventoryMode) and return "
                     + "the raw SDK Cart; the service stores the cart id on the session and maps it to a domain "
                     + "cart. This is the course's first WRITE: POST /api/cart makes an empty guest cart the "
-                    + "storefront can add to.",
-            hint = "Docs: Carts — create a Cart with a CartDraft "
+                    + "storefront can add to. The STORE is part of the cart's context like its currency — "
+                    + "fixed by the draft for the cart's life (a store cart is priced and restricted by that "
+                    + "store), so a store switch is a NEW cart: the pre-built service returns the existing cart "
+                    + "when the store matches, re-creates an EMPTY basket in the new store, and answers 409 "
+                    + "store-mismatch for a basket with items unless the shopper chose force=true (mirrors "
+                    + "4.13's currency rule). The response carries storeKey so the storefront can tell.",
+            hint = "Docs: Carts — create a Cart with a CartDraft; the store field "
                     + "(docs.commercetools.com/api/projects/carts#create-a-cart).")
     @PostMapping("/api/cart")
     public CartView create(@RequestParam(required = false) String store,
                            @RequestParam(required = false, defaultValue = "EUR") String currency,
-                           @RequestParam(required = false, defaultValue = "DE") String country) {
+                           @RequestParam(required = false, defaultValue = "DE") String country,
+                           @RequestParam(required = false, defaultValue = "false") boolean force) {
         return CartViewMapper.toView(cartService.createGuestCart(
-                CartContext.guest(currency, country, store, null))); // identity resolved by the service: customer if signed in, else the session's guest id
+                CartContext.guest(currency, country, store, null), force)); // identity resolved by the service: customer if signed in, else the session's guest id
     }
 
     @TaskDescription(
@@ -254,20 +260,17 @@ public class CartController {
 
     @TaskDescription(
             module = "cart", session = "Session 4", taskNumber = 10,
-            title = "Cart summary + savings", tier = "T2", capability = "cart.summary",
-            description = "Implement CartService.summary() in the cart module's application layer — compose "
-                    + "the cart's money fields (line items with price / discounted price, totalPrice, "
-                    + "taxedPrice, discountOnTotalPrice, shippingInfo) into a domain summary for the "
-                    + "storefront's order summary: subtotal, savings, shipping, tax, total. GET /api/cart "
-                    + "returns it; never throw on an empty cart.",
+            title = "Cart summary + savings", tier = "pre-built", capability = "cart.summary",
+            description = "Pre-built — study it. GET /api/cart is the read every write re-reads: CartService.summary() "
+                    + "maps the active cart through CartMapper into the storefront's order summary — subtotal, "
+                    + "savings (original − discounted, per line plus discountOnTotalPrice), shipping (shippingInfo), "
+                    + "tax (taxedPrice, present once 4.7 set an address), total — plus the cart's store, each "
+                    + "line's pricing / sourcing channel keys, and the owner. It ships built so the bag shows its "
+                    + "EMPTY state right after 4.1 and fills in as 4.2+ land; it never throws on a missing cart. "
+                    + "Study the mapper's decisions (where savings live, tax included vs excluded) rather than "
+                    + "writing them.",
             hint = "Docs: Carts — totalPrice, taxedPrice, discountOnTotalPrice, shippingInfo "
-                    + "(docs.commercetools.com/api/projects/carts#cart).",
-            decisions = {
-                    "How to present savings — cart-level vs per-line; original vs discounted totals.",
-                    "Tax included vs excluded — taxedPrice / taxMode (taxedPrice appears once a shipping "
-                            + "address is set, task 4.7).",
-                    "The empty-cart state — return an empty summary, never throw."
-            })
+                    + "(docs.commercetools.com/api/projects/carts#cart).")
     @GetMapping("/api/cart")
     public CartView summary() {
         return CartViewMapper.toView(cartService.summary());

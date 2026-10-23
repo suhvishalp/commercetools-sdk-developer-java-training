@@ -14,6 +14,11 @@ public record CartSummary(
         Long version,
         String currency,
         String country,
+        /**
+         * The store the cart was created in (part of its context like {@code currency}: fixed for the cart's
+         * life — a store switch is a new cart), or null for a store-less cart.
+         */
+        String storeKey,
         List<CartLine> lines,
         int itemCount,
         Money subtotal,
@@ -37,7 +42,7 @@ public record CartSummary(
 
     /** An empty cart (no cart created yet) — GET /api/cart never throws. */
     public static CartSummary empty() {
-        return new CartSummary(null, null, null, null, List.of(), 0,
+        return new CartSummary(null, null, null, null, null, List.of(), 0,
                 null, null, null, null, null, null, null, null, null, null, null, null, List.of());
     }
 

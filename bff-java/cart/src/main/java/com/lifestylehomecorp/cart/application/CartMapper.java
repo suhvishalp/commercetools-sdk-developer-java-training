@@ -2,6 +2,7 @@ package com.lifestylehomecorp.cart.application;
 
 import com.commercetools.api.models.cart.Cart;
 import com.commercetools.api.models.cart.LineItem;
+import com.commercetools.api.models.channel.ChannelReference;
 import com.commercetools.api.models.common.Address;
 import com.commercetools.api.models.common.LocalizedString;
 import com.commercetools.api.models.common.TypedMoney;
@@ -60,7 +61,9 @@ public final class CartMapper {
                     recurrence != null && recurrence.getPriceSelectionMode() != null
                             ? recurrence.getPriceSelectionMode().getJsonName() : null,
                     li.getDistributionChannel() != null ? li.getDistributionChannel().getId() : null,
+                    channelKey(li.getDistributionChannel()),
                     li.getSupplyChannel() != null ? li.getSupplyChannel().getId() : null,
+                    channelKey(li.getSupplyChannel()),
                     li.getInventoryMode() != null ? li.getInventoryMode().getJsonName() : null));
         }
 
@@ -99,6 +102,7 @@ public final class CartMapper {
                 cart.getVersion(),
                 currency,
                 cart.getCountry(),
+                cart.getStore() != null ? cart.getStore().getKey() : null,
                 lines,
                 itemCount,
                 new Money(subtotalCents, currency, fractionDigits),
@@ -179,6 +183,15 @@ public final class CartMapper {
             return value == 1 ? "Every " + unit : "Every " + value + " " + unit + "s";
         }
         return localized(policy.getName(), "Recurring");
+    }
+
+    /**
+     * The key of a line's channel reference — present only when the read EXPANDED it (the repository's
+     * {@code lineItems[*].distributionChannel} / {@code supplyChannel} expansions); a bare reference
+     * yields null, and so does no channel at all.
+     */
+    private static String channelKey(ChannelReference ref) {
+        return ref != null && ref.getObj() != null ? ref.getObj().getKey() : null;
     }
 
     private static Money money(TypedMoney m) {

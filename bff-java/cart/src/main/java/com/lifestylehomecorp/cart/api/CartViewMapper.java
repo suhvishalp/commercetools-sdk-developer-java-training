@@ -43,7 +43,7 @@ public final class CartViewMapper {
         }
 
         return new CartView(
-                c.id(), c.version(), c.currency(), c.country(),
+                c.id(), c.version(), c.currency(), c.country(), c.storeKey(),
                 lines,
                 c.itemCount(),
                 MoneyView.from(c.subtotal()),

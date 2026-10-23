@@ -67,7 +67,9 @@ class ApproachEvaluatorTest {
 
         assertThat(signal.status()).isEqualTo(TaskSignal.FLAGGED);
         assertThat(signal.flags()).anyMatch(f -> f.contains("unexpected-api: products"));
-        assertThat(signal.flags()).anyMatch(f -> f.startsWith("too-many-calls: 3"));
+        // Three calls are within 2.4's budget (the reference resolves the channel and rolls up bundles),
+        // so the shape is caught by the API and predicate checks, not by the call count.
+        assertThat(signal.flags()).noneMatch(f -> f.startsWith("too-many-calls"));
         assertThat(signal.flags()).anyMatch(f -> f.contains("missing-predicate: categories(id in"));
     }
 
@@ -86,16 +88,18 @@ class ApproachEvaluatorTest {
 
     @Test
     void nPlusOne_isFlaggedAsTooManyCalls() {
-        List<ObservedCall> calls = List.of(
-                get("categories", "limit=100"),
-                get("product-projections", "where=categories%28id+in+%3Aids%29"),
-                get("product-projections", "where=categories%28id+in+%3Aids%29"),
-                get("product-projections", "where=categories%28id+in+%3Aids%29"));
+        // One read per product on the page (N+1) — 2.4 allows up to 6 calls for the reference shape
+        // (category + listing + channel lookup + bundle roll-ups), so eight is clearly a per-item loop.
+        List<ObservedCall> calls = new java.util.ArrayList<>();
+        calls.add(get("categories", "limit=100"));
+        for (int i = 0; i < 7; i++) {
+            calls.add(get("product-projections", "where=categories%28id+in+%3Aids%29"));
+        }
 
         TaskSignal signal = evaluator.evaluate(task24, calls);
 
         assertThat(signal.status()).isEqualTo(TaskSignal.FLAGGED);
-        assertThat(signal.flags()).anyMatch(f -> f.startsWith("too-many-calls: 4"));
+        assertThat(signal.flags()).anyMatch(f -> f.startsWith("too-many-calls: 8"));
     }
 
     @Test
@@ -125,11 +129,28 @@ class ApproachEvaluatorTest {
         // possibly-wrong price for the shopper's store. Passes "does it work?", must still flag.
         ApproachExpectation task21 = new ApproachRules().forTask("catalog.Session 2.1");
 
+        // The shopper HAD selected a channel (it is on the incoming request) and the call dropped it.
         TaskSignal signal = evaluator.evaluate(task21, List.of(get("product-projections",
-                "staged=false&limit=20&priceCurrency=EUR&priceCountry=DE")));
+                "staged=false&limit=20&priceCurrency=EUR&priceCountry=DE")),
+                "priceCurrency=EUR&priceCountry=DE&priceChannel=distribution-channel", "storefront");
 
         assertThat(signal.status()).isEqualTo(TaskSignal.FLAGGED);
         assertThat(signal.flags()).anyMatch(f -> f.contains("missing-predicate: priceChannel"));
+        assertThat(signal.source()).isEqualTo("storefront");
+    }
+
+    @Test
+    void listProducts_task21_noChannelSelected_isNotFlagged() {
+        // No channel on the incoming request (a store-less page load, or a Canvas call without one):
+        // the base price is the right price, so the conditional needle must stay quiet.
+        ApproachExpectation task21 = new ApproachRules().forTask("catalog.Session 2.1");
+
+        TaskSignal signal = evaluator.evaluate(task21, List.of(get("product-projections",
+                "staged=false&limit=20&priceCurrency=EUR&priceCountry=DE")),
+                "priceCurrency=EUR&priceCountry=DE", "canvas");
+
+        assertThat(signal.status()).isEqualTo(TaskSignal.OK);
+        assertThat(signal.source()).isEqualTo("canvas");
     }
 
     // ---- get-by-key gap (2.2): fetch-all+filter hits the same resource head as the by-key GET ----

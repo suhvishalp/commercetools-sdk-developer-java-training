@@ -24,7 +24,9 @@ public record CartLineView(
         String recurrenceLabel,
         String recurrencePriceMode,
         String distributionChannelId,
+        String distributionChannelKey,
         String supplyChannelId,
+        String supplyChannelKey,
         String inventoryMode,
         List<CartLineView> children) {
 
@@ -34,7 +36,8 @@ public record CartLineView(
                 l.lineItemId(), l.sku(), l.name(), l.quantity(),
                 MoneyView.from(l.unitPrice()), MoneyView.from(l.lineTotal()), MoneyView.from(l.lineSavings()),
                 l.bundleId(), l.parentKey(), l.recurring(), l.recurrenceLabel(), l.recurrencePriceMode(),
-                l.distributionChannelId(), l.supplyChannelId(), l.inventoryMode(),
+                l.distributionChannelId(), l.distributionChannelKey(),
+                l.supplyChannelId(), l.supplyChannelKey(), l.inventoryMode(),
                 List.of());
     }
 
@@ -49,7 +52,8 @@ public record CartLineView(
                 rolledTotal, rolledTotal, rolledSavings,
                 parent.bundleId(), parent.parentKey(), parent.recurring(),
                 parent.recurrenceLabel(), parent.recurrencePriceMode(),
-                parent.distributionChannelId(), parent.supplyChannelId(), parent.inventoryMode(),
+                parent.distributionChannelId(), parent.distributionChannelKey(),
+                parent.supplyChannelId(), parent.supplyChannelKey(), parent.inventoryMode(),
                 children);
     }
 }

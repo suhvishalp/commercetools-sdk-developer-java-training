@@ -28,6 +28,9 @@ export interface CartLineView {
   recurrencePriceMode: string | null;
   distributionChannelId: string | null;
   supplyChannelId: string | null;
+  /** The channel KEYS behind the ids above (the storefront works in keys); null when the line has none. */
+  distributionChannelKey: string | null;
+  supplyChannelKey: string | null;
   inventoryMode: string | null;
   /** A bundle parent's component lines; empty for ordinary lines and for children. */
   children: CartLineView[];
@@ -49,6 +52,9 @@ export interface CartView {
   version: number | null;
   currency: string | null;
   country: string | null;
+  /** The store the basket was started in (POST /api/cart?store=), or null for a store-less basket. A basket
+   *  stays in its store for its whole life — switching store with items in the basket is a basket decision. */
+  storeKey: string | null;
   lines: CartLineView[];
   itemCount: number;
   subtotal: MoneyView | null;

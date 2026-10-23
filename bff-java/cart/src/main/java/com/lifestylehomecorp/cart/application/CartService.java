@@ -10,6 +10,7 @@ import com.commercetools.api.models.cart.CartSetLineItemSupplyChannelActionBuild
 import com.commercetools.api.models.cart.CartSetShippingAddressActionBuilder;
 import com.commercetools.api.models.cart.CartSetCustomerEmailActionBuilder;
 import com.commercetools.api.models.cart.CartSetShippingMethodActionBuilder;
+import com.commercetools.api.models.cart.CartState;
 import com.commercetools.api.models.cart.CartUpdateAction;
 import com.commercetools.api.models.cart.InventoryMode;
 import com.commercetools.api.models.cart.LineItem;
@@ -33,6 +34,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.function.LongFunction;
 
@@ -72,12 +74,48 @@ public class CartService {
     }
 
     /**
-     * 4.1 — create the guest cart and remember it for the session. The cart carries the SESSION's
-     * anonymousId (minted on first use, shared with the wishlist) — one guest identity across every
-     * resource, so Session 5's sign-in hands the cart AND the shopping list over together. A caller-supplied
-     * anonymousId is honoured only when the session has none yet.
+     * 4.1 — the session's cart in the requested STORE. The store is part of the cart's context like its
+     * currency: fixed by the CartDraft for the cart's life (the platform prices and restricts a store cart by
+     * that store), so "switching store" is a NEW cart, never an update. Hence the rules — mirroring 4.13's
+     * currency rule:
+     * <ul>
+     *   <li>no active cart on the session → create one in the requested store;</li>
+     *   <li>the active cart is already in that store (store-less counts as a store) → return it unchanged,
+     *       so the storefront can call this on every store sync without side effects;</li>
+     *   <li>the store differs and the basket is EMPTY → create a cart in the new store and repoint the
+     *       session (the old cart is left to expire);</li>
+     *   <li>the store differs and the basket has items → that is the shopper's decision, not ours:
+     *       409 {@code store-mismatch: …} unless {@code force} says "start a new basket here".</li>
+     * </ul>
+     * The cart carries the SESSION's anonymousId (minted on first use, shared with the wishlist) — one guest
+     * identity across every resource, so Session 5's sign-in hands the cart AND the shopping list over
+     * together. A caller-supplied anonymousId is honoured only when the session has none yet.
      */
+    public CartSummary createGuestCart(CartContext ctx, boolean force) {
+        Cart existing = activeCartOrNull();
+        if (existing != null) {
+            String current = existing.getStore() != null ? existing.getStore().getKey() : null;
+            String requested = ctx.storeKey() == null || ctx.storeKey().isBlank() ? null : ctx.storeKey();
+            if (Objects.equals(current, requested)) {
+                return CartMapper.toDomain(existing); // idempotent: same store, same cart
+            }
+            boolean hasItems = existing.getLineItems() != null && !existing.getLineItems().isEmpty();
+            if (hasItems && !force) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "store-mismatch: your basket belongs to "
+                        + storeLabel(current) + "; requested " + storeLabel(requested)
+                        + ". Empty it or start a new basket.");
+            }
+        }
+        return createAndRemember(ctx);
+    }
+
+    /** 4.1 without the force flag — a store mismatch on a non-empty basket is a 409. */
     public CartSummary createGuestCart(CartContext ctx) {
+        return createGuestCart(ctx, false);
+    }
+
+    /** Create the cart for the session's identity and point the session at it. */
+    private CartSummary createAndRemember(CartContext ctx) {
         // A cart belongs to exactly one identity. If the shopper is signed in, the cart is THEIRS —
         // creating it as anonymous leaves it unattached, and Session 6's readiness check then refuses
         // to place an order for nobody (which is the correct behaviour, and a confusing symptom).
@@ -92,6 +130,31 @@ public class CartService {
         var cart = repo.create(CartContext.guest(ctx.currency(), ctx.country(), ctx.storeKey(), anonymousId));
         session.setActiveCart(cart.getId(), anonymousId);
         return CartMapper.toDomain(cart);
+    }
+
+    /**
+     * The session's cart if it is still usable: null when the session has none, when the platform no longer
+     * has it (deleted in the Merchant Center — a 404), or when it is no longer Active (ordered / merged).
+     * Any of those means "no active cart" and 4.1 simply creates one.
+     */
+    private Cart activeCartOrNull() {
+        String id = session.cartIdOrNull();
+        if (id == null) {
+            return null;
+        }
+        try {
+            Cart cart = repo.get(id);
+            return cart.getCartState() == null || cart.getCartState() == CartState.ACTIVE ? cart : null;
+        } catch (ApiHttpException ex) {
+            if (ex.getStatusCode() == 404) {
+                return null;
+            }
+            throw ex;
+        }
+    }
+
+    private static String storeLabel(String storeKey) {
+        return storeKey == null ? "no store" : "store " + storeKey;
     }
 
     /**
@@ -140,7 +203,10 @@ public class CartService {
         return cart.getCartState() == null ? null : cart.getCartState().getJsonName();
     }
 
-    /** 4.10 — the cart summary. Never throws on an empty (or not-yet-created) cart. */
+    /**
+     * 4.10 (pre-built) — the cart summary the storefront re-reads after every write. Never throws on an
+     * empty (or not-yet-created) cart, so the bag can show its empty state right after 4.1.
+     */
     public CartSummary summary() {
         String id = session.cartIdOrNull();
         return id == null ? CartSummary.empty() : CartMapper.toDomain(repo.get(id));

@@ -5,7 +5,8 @@ package com.lifestylehomecorp.cart.domain;
  * the parent carries {@code bundleId} (its identity), each child carries {@code parentKey} equal to
  * that id (4.3) — the storefront groups children under the parent whose {@code bundleId} matches.
  * {@code recurring} marks a subscription line (4.4); the channel/inventory fields carry the per-line
- * fulfilment choices (4.5 / 4.6).
+ * fulfilment choices (4.5 / 4.6) — each channel as its id AND its key, so the storefront can SHOW which
+ * channel priced / sources the line without a second lookup.
  */
 public record CartLine(
         String lineItemId,
@@ -23,6 +24,10 @@ public record CartLine(
         /** "Fixed" (price locked at subscribe time) or "Dynamic" (re-priced each cycle); null when not recurring. */
         String recurrencePriceMode,
         String distributionChannelId,
+        /** The key of the channel that PRICED the line (expanded on read), or null when the base price applies. */
+        String distributionChannelKey,
         String supplyChannelId,
+        /** The key of the channel the line is SOURCED from (pickup store), or null for default inventory. */
+        String supplyChannelKey,
         String inventoryMode) {
 }

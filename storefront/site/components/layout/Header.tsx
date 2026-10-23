@@ -2,12 +2,13 @@
 
 import { Suspense } from 'react';
 import { useTranslations } from 'next-intl';
-import { ShoppingBag, Heart, Truck } from '@/components/ui/icons';
+import { ShoppingBag, Truck } from '@/components/ui/icons';
 import { Link } from '@/i18n/routing';
 import { useCart } from '@/hooks/useCart';
-import { useShoppingList } from '@/hooks/useShoppingList';
 import { ChannelBar } from './ChannelBar';
 import { StoreSelector } from './StoreSelector';
+import { StoreSwitchDialog } from './StoreSwitchDialog';
+import { WishlistMenu } from './WishlistMenu';
 import { AnnouncementBar } from './AnnouncementBar';
 import { AccountMenu } from './AccountMenu';
 import { SearchBar } from './SearchBar';
@@ -19,16 +20,16 @@ import { CategoryNav } from '@/components/product/CategoryNav';
 /**
  * The shop header: promo bar · logo + search + store / account / wishlist / bag · the category row with
  * the region control at its right (which also carries the project.info gate). The price-channel strip stays beneath it.
+ * Also hosts the two basket-follows-the-shop helpers: currency sync and the store-switch decision dialog.
  */
 export function Header() {
   const t = useTranslations();
   const { cart } = useCart();
   const count = cart?.itemCount ?? 0;
-  const { list } = useShoppingList();
-  const saved = list?.itemCount ?? 0;
   return (
     <header className="sticky top-0 z-20">
       <CartCurrencySync />
+      <StoreSwitchDialog />
       <AnnouncementBar />
       <div className="border-b border-[var(--color-border)] bg-white/92 backdrop-blur-md">
         <div className="mx-auto flex h-[72px] w-full max-w-7xl items-center gap-6 px-6">
@@ -44,10 +45,7 @@ export function Header() {
           <nav className="ml-auto flex items-center gap-1 text-sm">
             <StoreSelector />
             <AccountMenu />
-            <Link href="/cart" aria-label={`Saved items (${saved})`} title="Saved for later" className="hbtn">
-              <Heart size={20} />
-              {saved > 0 ? <span className="badge-count">{saved}</span> : null}
-            </Link>
+            <WishlistMenu />
             <Link href="/cart" className="hbtn">
               <ShoppingBag size={20} />
               <span className="hidden sm:inline">{t('nav.cart')}</span>
