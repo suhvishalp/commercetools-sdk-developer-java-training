@@ -1,8 +1,6 @@
 package com.lifestylehomecorp.extensibility.api;
 
-import com.lifestylehomecorp.extensibility.application.ExtensibilityDecisions;
 import com.lifestylehomecorp.extensibility.application.ExtensionRegistrationService;
-import com.lifestylehomecorp.extensibility.domain.DecisionRow;
 import com.lifestylehomecorp.extensibility.domain.ExtensionRegistration;
 import com.lifestylehomecorp.extensibility.domain.IntakeStatus;
 import com.lifestylehomecorp.platform.annotations.TaskDescription;
@@ -13,40 +11,20 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
- * 7.5 the Subscription concept · 7.6 the Extension registration · 7.9 the decision · the pre-built intake status.
+ * 7.6 the Extension registration · the pre-built intake status. (Subscriptions and the mechanism decision are
+ * concept slides in Commerce Canvas, not endpoints.)
  * All trainer / participant-side: none of these is called by the storefront.
  */
 @RestController
 public class ExtensibilityController {
 
     private final ExtensionRegistrationService registration;
-    private final ExtensibilityDecisions decisions;
 
-    public ExtensibilityController(ExtensionRegistrationService registration, ExtensibilityDecisions decisions) {
+    public ExtensibilityController(ExtensionRegistrationService registration) {
         this.registration = registration;
-        this.decisions = decisions;
-    }
-
-    @TaskDescription(
-            module = "extensibility", session = "Session 7", taskNumber = 5,
-            title = "Subscriptions: the delivery we can't provision here", tier = "T1", capability = "ext.subscriptionConcept",
-            description = "Pre-built — a concept walkthrough, no code. GET /api/extensibility/subscription-concept shows the "
-                    + "SubscriptionDraft we would send: destination = a cloud queue (SQS · SNS · EventBridge · Azure Service Bus · "
-                    + "Event Grid · Google Pub/Sub · Confluent — there is NO HTTP destination, unlike an API Extension) and "
-                    + "messages = the order Message types the timeline (7.3) already reads. Registering it needs a queue AND "
-                    + "credentials the platform can publish with — a cloud account nobody in this room has. Delivery is "
-                    + "at-least-once and unordered: exactly the dedupe + per-resource ordering 7.4 implements. Connect provisions "
-                    + "the queue for you — that is Session 8's Event application.",
-            hint = "Docs: Subscriptions — Destination types, Delivery, MessageSubscription "
-                    + "(docs.commercetools.com/api/projects/subscriptions).")
-    @GetMapping("/api/extensibility/subscription-concept")
-    public Map<String, Object> subscriptionConcept() {
-        return decisions.subscriptionConcept();
     }
 
     @TaskDescription(
@@ -77,33 +55,6 @@ public class ExtensibilityController {
     public Map<String, Object> remove() {
         boolean removed = registration.remove();
         return Map.of("removed", removed, "key", registration.key());
-    }
-
-    @TaskDescription(
-            module = "extensibility", session = "Session 7", taskNumber = 9,
-            title = "Which mechanism? The extensibility decision", tier = "T2", capability = "ext.decision",
-            description = "Implement ExtensibilityDecisions.table(): five LHC requirements — gift message on the order · "
-                    + "ops-editable checkout rules · max 10 per line on every channel incl. Merchant Center · nightly ERP price "
-                    + "feed · order confirmation e-mail — each mapped to the mechanism that serves it (Custom Field · Custom Object "
-                    + "· API Extension · Import API · Subscription → Session 8), with the reason, the task that built it, and the "
-                    + "wrong choice it avoids. Ask in this order: sync vs async? can the BFF do it before the call (the default)? "
-                    + "who else writes? cost of being wrong? GET /api/extensibility/decisions.",
-            hint = "Docs: Extensibility overview; Integration patterns — choosing between API Extensions, Subscriptions and "
-                    + "the Import API (docs.commercetools.com/learning-integrate-with-commercetools/integration-patterns/overview).",
-            decisions = {
-                    "Sync vs async first — must it happen BEFORE the write persists? Only then an Extension.",
-                    "Can the BFF do it before the call? Then do it there — an Extension is the exception, not the rule.",
-                    "Who else writes? Merchant Center, imports, a Connect app → the rule must live in the platform.",
-                    "Cost of being wrong — a slow Extension degrades every client; a lost Message is redelivered; a bad import row is one line."
-            })
-    @GetMapping("/api/extensibility/decisions")
-    public Map<String, Object> decisionTable() {
-        Map<String, Object> out = new LinkedHashMap<>();
-        out.put("askInThisOrder", decisions.questions());
-        List<DecisionRow> rows = decisions.table();
-        out.put("rows", rows);
-        out.put("theOneWeCouldNotFinishAlone", "Order confirmation e-mail — a Subscription needs a queue; Session 8's Connect Event app provisions it.");
-        return out;
     }
 
     @TaskDescription(

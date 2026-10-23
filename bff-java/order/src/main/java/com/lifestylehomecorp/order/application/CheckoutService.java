@@ -3,7 +3,6 @@ package com.lifestylehomecorp.order.application;
 import com.commercetools.api.models.cart.Cart;
 import com.commercetools.api.models.cart.CartSetBillingAddressActionBuilder;
 import com.commercetools.api.models.common.BaseAddressBuilder;
-import com.lifestylehomecorp.order.domain.CheckoutMode;
 import com.lifestylehomecorp.order.domain.CheckoutSession;
 import com.lifestylehomecorp.order.domain.CheckoutStart;
 import com.lifestylehomecorp.order.domain.Readiness;
@@ -99,23 +98,6 @@ public class CheckoutService {
         CheckoutSession created = sessions.create(cart.getId(), checkout.getApplicationKey(), attempt.orderNumber());
         return new CheckoutStart(created.id(), ctp.getProjectKey(), CheckoutRegion.regionOf(ctp.getApiUrl()),
                 created.expiryAt(), attempt.orderNumber(), checkout.getApplicationKey());
-    }
-
-    /** 6.10 — the decision this BFF is built for, stated as data the storefront can show. */
-    public CheckoutMode mode() {
-        return new CheckoutMode(
-                "PaymentOnly",
-                checkout.getApplicationKey(),
-                List.of("cart (S4)", "addresses + shipping method (S4 / S5)", "readiness (6.5)",
-                        "the order number — futureOrderNumber (6.2)", "the Checkout Session (6.1)",
-                        "reading the order + ledger (6.3 / 6.4)", "capture / cancel / refund via Payment Intents (6.6)",
-                        "orderState + the custom state machine (6.7)", "order history (6.8)", "the subscription (6.9)"),
-                List.of("the payment UI (Browser SDK paymentFlow)", "the PSP integration (connector)",
-                        "the Payment + Transactions on the ledger", "creating the Order from the cart",
-                        "paymentState", "automated reversals when order creation fails"),
-                "Payment Only keeps LHC's checkout UX and PCI scope out of the BFF; Complete Checkout (checkoutFlow) "
-                        + "would also take addresses, shipping and the success page; build-your-own would add the "
-                        + "PSP integration and every ledger write to this module.");
     }
 
     // ---- plumbing ------------------------------------------------------------------------------

@@ -1,6 +1,5 @@
 package com.lifestylehomecorp.order.api;
 
-import com.lifestylehomecorp.order.api.dto.CheckoutModeView;
 import com.lifestylehomecorp.order.api.dto.CheckoutStartView;
 import com.lifestylehomecorp.order.api.dto.OrderNumberView;
 import com.lifestylehomecorp.order.api.dto.ReadinessView;
@@ -83,26 +82,4 @@ public class CheckoutController {
         return ReadinessView.from(checkout.readiness());
     }
 
-    @TaskDescription(
-            module = "order", session = "Session 6", taskNumber = 10,
-            title = "Build-your-own vs paymentFlow vs checkoutFlow", tier = "T2", capability = "order.checkoutMode",
-            description = "Decide — and write down — where checkout lives, then implement CheckoutService.mode(): "
-                    + "GET /api/checkout/mode returns the mode this BFF is built for and who owns which step. You built "
-                    + "paymentFlow (Payment Only): you own addresses, shipping, review, the order number, readiness and "
-                    + "everything after the order; Checkout owns the payment UI, the PSP, the ledger writes and order "
-                    + "creation. Compare with checkoutFlow (Checkout also owns addresses, shipping, discounts, the success "
-                    + "page) and build-your-own (the BFF creates the Payment, mirrors PSP results with addTransaction, "
-                    + "calls POST /orders, handles redirects + webhooks). Recommend paymentFlow for LHC and say why.",
-            hint = "Docs: Checkout overview — Complete Checkout and Payment Only modes; custom checkout learning module "
-                    + "(docs.commercetools.com/checkout/overview).",
-            decisions = {
-                    "PCI scope — card data must never reach the BFF; both Checkout modes guarantee it, build-your-own only with PSP-hosted fields.",
-                    "Who creates the order — and therefore owns idempotency: futureOrderNumber vs your own POST /orders.",
-                    "Customisation vs speed — Payment Only keeps LHC's UX; Complete Checkout ships in a day.",
-                    "Channels + migration — a call centre / the recurring cart still need the Orders API; build-your-own → paymentFlow keeps 6.3–6.9 intact."
-            })
-    @GetMapping("/api/checkout/mode")
-    public CheckoutModeView mode() {
-        return CheckoutModeView.from(checkout.mode());
-    }
 }

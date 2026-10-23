@@ -233,31 +233,4 @@ public class CustomerController {
         return CustomerView.from(customers.confirmEmail(req.tokenValue()));
     }
 
-    // ---- 5.10 -----------------------------------------------------------------------------------
-
-    @TaskDescription(
-            module = "customer", session = "Session 5", taskNumber = 10,
-            title = "PII & GDPR: what crosses the boundary", tier = "T2", capability = "customer.pii",
-            description = "Homework. Two halves: (1) the PII-safe projection — CustomerMapper.toProfile is the "
-                    + "ONE place that decides what leaves the BFF (no password, customerNumber, externalId, custom "
-                    + "fields; no email in log lines); (2) deletion — implement CustomerRepository.delete(id, "
-                    + "version) (DELETE /customers/{id}?version=…) behind DELETE /api/account, after the "
-                    + "session check. Orders keep their customer snapshot and nothing cascades, so decide "
-                    + "delete vs anonymise first. Afterwards the session is a fresh guest.",
-            hint = "Docs: Customers — delete a Customer; GDPR / data erasure guidance "
-                    + "(docs.commercetools.com/api/projects/customers#delete-customer).",
-            decisions = {
-                    "Erasure vs retention — orders reference the customer and must be kept for accounting; "
-                            + "delete the Customer, or anonymise it (tombstone email, blank name, drop addresses)?",
-                    "What crosses to the browser per surface — the header needs a first name; the account page "
-                            + "needs the address book; nothing needs customerNumber or internal ids.",
-                    "Logging + telemetry — emails in logs are PII, correlation ids are not; does the S3 "
-                            + "request-body capture retain sign-in bodies?",
-                    "Data scope — a store-specific customer's data belongs to that store's controller."
-            })
-    @DeleteMapping("/api/account")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteMe() {
-        customers.deleteAccount();
-    }
 }
