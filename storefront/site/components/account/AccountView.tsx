@@ -16,7 +16,7 @@ import { useAccount } from '@/hooks/useAccount';
 import { formatAddress } from '@/components/cart/DeliveryPanel';
 import { AddressForm } from '@/components/checkout/AddressForm';
 import { formatMoney } from '@/lib/utils';
-import { MapPin, Mail, Package, ShieldCheck, Trash, User, Tag, Check, Heart, CreditCard } from '@/components/ui/icons';
+import { MapPin, Mail, Package, ShieldCheck, Trash, User, Tag, Check, Heart } from '@/components/ui/icons';
 
 const input = 'field';
 const card = 'surface space-y-4 p-6';
@@ -113,9 +113,6 @@ export function AccountView() {
           <div className="grid gap-6 md:grid-cols-2" id="security">
             <FeatureGate capability="customer.password" title="Change password">
               <PasswordCard live={live} />
-            </FeatureGate>
-            <FeatureGate capability="customer.pii" title="Privacy & data">
-              <DeleteCard live={live} />
             </FeatureGate>
           </div>
         </div>
@@ -372,26 +369,3 @@ function PasswordCard({ live }: { live: boolean }) {
   );
 }
 
-function DeleteCard({ live }: { live: boolean }) {
-  const router = useRouter();
-  const { deleteAccount } = useAccount();
-  const [confirm, setConfirm] = useState(false);
-  const [busy, setBusy] = useState(false);
-  return (
-    <div className={card}>
-      <CardTitle icon={<CreditCard size={17} />}>Privacy &amp; data</CardTitle>
-      <p className="text-sm text-[var(--color-muted)]">Delete your account: removes your profile and addresses. Past orders are kept for accounting.</p>
-      {!confirm ? (
-        <button disabled={!live} onClick={() => setConfirm(true)} className="btn btn-sm border border-red-300 text-red-700 hover:bg-red-50 disabled:opacity-50">
-          <Trash size={14} /> Delete account
-        </button>
-      ) : (
-        <div className="flex items-center gap-3">
-          <button disabled={busy} onClick={async () => { setBusy(true); const r = await deleteAccount(); setBusy(false); if (r.ok) router.push('/'); }}
-            className="btn btn-sm bg-red-700 text-white disabled:opacity-50">{busy ? 'Deleting…' : 'Yes, delete my account'}</button>
-          <button onClick={() => setConfirm(false)} className="text-sm underline">Keep it</button>
-        </div>
-      )}
-    </div>
-  );
-}

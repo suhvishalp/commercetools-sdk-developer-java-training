@@ -4,7 +4,7 @@ import useSWR, { mutate as globalMutate } from 'swr';
 import { bffDelete, bffGet, bffPatch, bffPost, bffPut, BffResult } from '@/lib/bff/client';
 import { AddressInput, CustomerView, TokenView } from '@/lib/customer-types';
 import { KEY_ACCOUNT } from '@/lib/cache-keys';
-import { refreshIdentityEverywhere, useSession } from './useSession';
+import { useSession } from './useSession';
 
 /**
  * The signed-in customer's account (5.4 – 5.8, 5.10): profile, address book, password, email
@@ -52,11 +52,6 @@ export function useAccount() {
       return run(() => bffPost<CustomerView>('customers/email/confirm', { tokenValue }));
     },
     /** 5.10 — delete the account; afterwards the session is a fresh guest. */
-    async deleteAccount() {
-      const res = await bffDelete<void>('account');
-      await refreshIdentityEverywhere();
-      return res;
-    },
   };
 }
 

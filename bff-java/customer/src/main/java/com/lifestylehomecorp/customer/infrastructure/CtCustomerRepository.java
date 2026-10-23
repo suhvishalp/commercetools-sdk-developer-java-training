@@ -152,8 +152,9 @@ public class CtCustomerRepository implements CustomerRepository {
     /** 5.10 — DELETE /customers/{id}?version=… Orders keep their customer snapshot; nothing cascades. */
     @Override
     public Customer delete(String customerId, Long version) {
-        // TODO (Task 5.10 — homework): DELETE /customers/{id}?version=… and return the raw Customer.
-        // Decide first: delete vs anonymise (orders keep their snapshot; nothing cascades).
-        throw new TaskNotImplementedException("5.10");
+        return apiRoot.customers().withId(customerId)
+                .delete()
+                .withVersion(version)
+                .executeBlocking().getBody();
     }
 }

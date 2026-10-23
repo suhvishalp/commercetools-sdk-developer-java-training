@@ -371,9 +371,7 @@ export function CheckoutView() {
             </div>
             <Link href="/cart" className="mt-3 block text-[13px] font-semibold text-[var(--color-violet-dark)]">Edit bag</Link>
           </div>
-          <FeatureGate capability="order.checkoutMode" title="Payments">
-            <p className="flex items-center gap-2 px-1 text-xs text-[var(--color-muted)]"><ShieldCheck size={14} /> Secure payments by commercetools Checkout</p>
-          </FeatureGate>
+          <p className="flex items-center gap-2 px-1 text-xs text-[var(--color-muted)]"><ShieldCheck size={14} /> Secure payments by commercetools Checkout</p>
         </aside>
       </div>
     </div>
