@@ -728,9 +728,11 @@ export const DECISIONS: ArchitectDecision[] = [
       "7.3"
     ],
     "cilTasks": [
-      "6.4"
+      "6.4",
+      "6.7",
+      "6.8"
     ],
-    "cilNote": "The order timeline (Messages) is not served on CIL."
+    "cilNote": "The shopper's side is core CIL (cancel 6.7, return 6.8, reorder 6.9, via Order.availableActions); state-machine transitions stay back office. The order timeline (Messages) is not served on CIL."
   },
   {
     "id": "D32",
@@ -754,6 +756,7 @@ export const DECISIONS: ArchitectDecision[] = [
       "6.10"
     ],
     "cilTasks": [
+      "6.10",
       "6.2",
       "6.3",
       "6.6"
