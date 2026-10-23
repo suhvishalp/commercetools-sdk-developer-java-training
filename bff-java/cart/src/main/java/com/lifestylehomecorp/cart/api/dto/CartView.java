@@ -12,6 +12,8 @@ public record CartView(
         Long version,
         String currency,
         String country,
+        /** The cart's store key (null for a store-less cart) — the storefront compares it with the selected store. */
+        String storeKey,
         List<CartLineView> lines,
         int itemCount,
         MoneyView subtotal,

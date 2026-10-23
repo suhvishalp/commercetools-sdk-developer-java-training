@@ -52,10 +52,11 @@ function seedQuery(task: TaskItem): QueryParam[] {
     }
   }
   // Session 4 write tasks. 4.1 create takes NO body — it reads the cart context from query params
-  // (currency / country, optional store); seed them so the call is self-explanatory. The recurring add
-  // shares POST /api/cart/line-items with 4.2, distinguished only by ?recurring — without it the call
-  // routes to 4.2 (the plain add) and the wrong task completes.
-  if (cap === 'cart.create') return [{ key: 'currency', value: 'EUR' }, { key: 'country', value: 'DE' }];
+  // (store / currency / country); seed them so the call is self-explanatory. The store comes first: it is
+  // part of the cart's context like the currency, and a store-less cart is what the storefront's store
+  // switch cannot follow. The recurring add shares POST /api/cart/line-items with 4.2, distinguished
+  // only by ?recurring — without it the call routes to 4.2 (the plain add) and the wrong task completes.
+  if (cap === 'cart.create') return [{ key: 'store', value: 'b2c-retail-store' }, { key: 'currency', value: 'EUR' }, { key: 'country', value: 'DE' }];
   if (cap === 'cart.recurring') return [{ key: 'recurring', value: 'true' }];
   // Session 5. 5.3 shares POST /api/customers/login with 5.2, distinguished only by ?mergeMode — without
   // it the call routes to 5.2 (the plain sign-in) and the wrong task completes. 5.6 echoes the price
@@ -113,7 +114,9 @@ function seedBody(task: TaskItem): string {
   const j = (o: unknown) => JSON.stringify(o, null, 2);
   switch (task.capability) {
     case 'cart.lineItems':
-      return j({ sku: 'CARM-023', quantity: 1 });
+      // distributionChannelKey = the store's price channel (the 4.5 seed's key): without it the line is priced
+      // from the BASE price while the PLP showed the channel price — the response's distributionChannelKey says which.
+      return j({ sku: 'CARM-023', quantity: 1, distributionChannelKey: 'distribution-channel' });
     case 'cart.recurring':
       return j({ sku: 'CARM-023' });
     case 'cart.bundles':

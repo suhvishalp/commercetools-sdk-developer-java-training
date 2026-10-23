@@ -5,6 +5,7 @@ import { useLocale } from 'next-intl';
 import useSWR from 'swr';
 import { FeatureGate } from '@/components/ui/FeatureGate';
 import { useCapability } from '@/context/capabilities-context';
+import { usePreferences } from '@/context/preferences-context';
 import { bffGet } from '@/lib/bff/client';
 import { CartExtrasView } from '@/lib/ext-types';
 import { useCart } from '@/hooks/useCart';
@@ -12,7 +13,7 @@ import { useShoppingList } from '@/hooks/useShoppingList';
 import { CartLineView, MoneyView } from '@/lib/cart-types';
 import { SavedItemView } from '@/lib/shopping-list-types';
 import { formatMoney } from '@/lib/utils';
-import { Package, Layers, Sparkles, Tag, Heart, User, Check, ShieldCheck, Gift } from '@/components/ui/icons';
+import { Package, Layers, Sparkles, Tag, Heart, User, Check, ShieldCheck, Gift, ShoppingBag } from '@/components/ui/icons';
 import { Minus, Plus } from '@/components/ui/icons-extra';
 import { Link } from '@/i18n/routing';
 import { DeliveryPanel } from './DeliveryPanel';
@@ -25,7 +26,8 @@ const m = (centAmount: number): MoneyView => ({ centAmount, currencyCode: 'EUR',
 const line = (over: Partial<CartLineView> & { name: string; lineItemId: string }): CartLineView => ({
   sku: null, quantity: 1, unitPrice: null, lineTotal: null, lineSavings: m(0),
   bundleId: null, parentKey: null, recurring: false, recurrenceLabel: null, recurrencePriceMode: null,
-  distributionChannelId: null, supplyChannelId: null, inventoryMode: null, children: [], ...over,
+  distributionChannelId: null, supplyChannelId: null, distributionChannelKey: null, supplyChannelKey: null,
+  inventoryMode: null, children: [], ...over,
 });
 
 /** Shown (dimmed) while cart.summary is locked, so the cart still reads like a real shop — and it
@@ -41,6 +43,7 @@ const SAMPLE_LINES: CartLineView[] = [
   }),
 ];
 const SAMPLE_TOTALS = { subtotal: m(45613), savings: m(500), shipping: null, tax: null, total: m(45113) };
+const EMPTY_TOTALS = { subtotal: null, savings: null, shipping: null, tax: null, total: null };
 
 /**
  * 7.7 — the `requiresWhiteGlove` Custom Field is written by the platform (our API Extension) before the cart
@@ -70,6 +73,7 @@ function WhiteGloveBadge({ lineCount }: { lineCount: number }) {
 export function CartView() {
   const locale = useLocale();
   const { unlocked } = useCapability('cart.summary');
+  const { unlocked: basketsLive } = useCapability('cart.create');
   const { cart, changeQuantity, removeLine, applyCode, setLineFulfilment } = useCart();
   const { saveForLater } = useShoppingList();
   const [code, setCode] = useState('');
@@ -80,11 +84,14 @@ export function CartView() {
 
   const fmt = (v: MoneyView | null | undefined) => (v ? formatMoney(v.centAmount, v.currencyCode, locale) : '—');
 
-  // Locked → sample (dimmed by the gate). Unlocked → the real cart (empty state handled below).
+  // The bag is real as soon as baskets can be started (cart.create) — an empty one shows the empty state,
+  // never the sample. Before that the sample lines stand in (dimmed by the gate). Lines are editable once
+  // the summary read (cart.summary) is live and a basket is loaded.
+  const real = basketsLive || unlocked;
   const live = unlocked && cart ? cart.lines : null;
-  const lines = live ?? SAMPLE_LINES;
-  const totals = unlocked && cart ? cart : SAMPLE_TOTALS;
-  const empty = unlocked && (!cart || cart.lines.length === 0);
+  const lines = real ? live ?? [] : SAMPLE_LINES;
+  const totals = real ? (unlocked && cart ? cart : EMPTY_TOTALS) : SAMPLE_TOTALS;
+  const empty = real && lines.length === 0;
   const itemCount = lines.reduce((a, l) => a + l.quantity, 0);
 
   const act = async (fn: () => Promise<unknown>) => {
@@ -101,9 +108,12 @@ export function CartView() {
           <div className="surface px-6">
             {empty ? (
               <div className="py-14 text-center">
-                <h3 className="text-lg">Your bag is empty</h3>
+                <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-[var(--color-violet-50)] text-[var(--color-violet)]">
+                  <ShoppingBag size={28} />
+                </div>
+                <h3 className="mt-4 text-lg">Your bag is empty</h3>
                 <p className="mt-1 text-sm text-[var(--color-muted)]">Browse the collection or pick up where you left off.</p>
-                <Link href="/products" className="btn btn-primary mt-5">Start shopping</Link>
+                <Link href="/products" className="btn btn-primary mt-5">Browse products</Link>
               </div>
             ) : (
               <div className="divide-y divide-[var(--color-border)]">
@@ -261,7 +271,10 @@ function CartRow({
   // The line carries the supply channel's ID; the selector works in keys — resolve through the location list.
   const { unlocked: channelUnlocked } = useCapability('cart.channel');
   const { locations } = usePickupLocations(channelUnlocked && editable);
-  const pickupKey = l.supplyChannelId ? locations.find((p) => p.id === l.supplyChannelId)?.key ?? DELIVERY : DELIVERY;
+  const pickupKey = l.supplyChannelKey ?? (l.supplyChannelId ? locations.find((p) => p.id === l.supplyChannelId)?.key ?? DELIVERY : DELIVERY);
+  // The price channel the line was priced from — named only when it is one the shop knows (the store's channels).
+  const { channels } = usePreferences();
+  const pricedFor = l.distributionChannelKey && channels.includes(l.distributionChannelKey) ? l.distributionChannelKey : null;
   return (
     <div className="py-5">
       <div className="flex items-start gap-5">
@@ -309,6 +322,7 @@ function CartRow({
         <div className="text-right">
           <p className="text-[18px] font-bold">{fmt(l.lineTotal)}</p>
           {l.quantity > 1 && l.unitPrice ? <p className="text-xs text-[var(--color-muted)]">{fmt(l.unitPrice)} each</p> : null}
+          {pricedFor ? <p className="mt-0.5 text-[11px] text-[var(--color-muted)]">Priced for {pricedFor}</p> : null}
         </div>
       </div>
 

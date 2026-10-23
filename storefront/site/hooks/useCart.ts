@@ -5,6 +5,40 @@ import { bffGet, bffPost, bffPatch, bffPut, bffDelete, BffResult } from '@/lib/b
 import { usePreferences } from '@/context/preferences-context';
 import { CartView, FulfilmentChoice, PickupLocationView, ShippingAddressInput, ShippingOptionView } from '@/lib/cart-types';
 import { KEY_CART, KEY_PICKUP_LOCATIONS, KEY_READINESS, KEY_SHIPPING_OPTIONS } from '@/lib/cache-keys';
+import { storeConflictStore } from '@/lib/store-choice';
+
+/** What a basket is started with: the shop's store (or none), currency and country. */
+export interface BasketStart {
+  store?: string | null;
+  currency?: string | null;
+  country?: string | null;
+}
+
+/** The BFF refused to start a basket in another store while the current one still has items (409). */
+export function isStoreMismatch(res: BffResult<unknown>): boolean {
+  const body = res.data as { message?: string; detail?: string } | null;
+  const message = body?.message ?? body?.detail ?? '';
+  return res.status === 409 || message.startsWith('store-mismatch');
+}
+
+/**
+ * POST /api/cart — start (or re-use) the basket for a store. The BFF keeps an active basket in the same
+ * store, re-creates an empty one when the store differs, and refuses (409) when the basket has items in
+ * another store; `force` starts a new basket there anyway. A refusal raises the shopper's choice
+ * (keep the basket / start a new one) through `storeConflictStore`, so every caller surfaces the same dialog.
+ */
+export async function createBasketInStore(start: BasketStart, force = false): Promise<BffResult<CartView>> {
+  const qs = new URLSearchParams();
+  if (start.store) qs.set('store', start.store);
+  if (start.currency) qs.set('currency', start.currency);
+  if (start.country) qs.set('country', start.country);
+  if (force) qs.set('force', 'true');
+  const res = await bffPost<CartView>(`cart?${qs.toString()}`);
+  if (!res.ok && !force && start.store && isStoreMismatch(res)) {
+    storeConflictStore.open(start.store);
+  }
+  return res;
+}
 
 /** Every cart write invalidates the cart AND what is derived from it (delivery options, checkout readiness). */
 export async function refreshCartEverywhere(): Promise<void> {
@@ -29,16 +63,22 @@ export function useCart() {
   });
   const cart = data && data.ok ? data.data : null;
 
-  async function ensureCart(): Promise<void> {
-    if (cart?.id) return;
+  /**
+   * Make sure a basket exists before a write. Returns null when one does (or was just started); returns the
+   * refused result when the BFF would not start one here because the shopper's basket has items in another
+   * store — the store choice is then on screen and the write must not go ahead.
+   */
+  async function ensureCart(): Promise<BffResult<CartView> | null> {
+    if (cart?.id) return null;
     // Re-check the live cart before creating: another panel may have created one since this render.
     const live = await bffGet<CartView>(KEY_CART);
-    if (live.ok && live.data?.id) return;
-    const qs = new URLSearchParams();
-    if (currency) qs.set('currency', currency);
-    if (country) qs.set('country', country);
-    if (storeKey) qs.set('store', storeKey);
-    await bffPost<CartView>(`cart?${qs.toString()}`);
+    if (live.ok && live.data?.id) return null;
+    const res = await createBasketInStore({ store: storeKey, currency, country });
+    if (!res.ok && storeKey && isStoreMismatch(res)) {
+      await refreshCartEverywhere(); // learn which store the basket is in, for the dialog
+      return res;
+    }
+    return null;
   }
 
   async function run<T>(op: () => Promise<BffResult<T>>): Promise<BffResult<T>> {
@@ -59,7 +99,8 @@ export function useCart() {
      * pickup store instead of delivery stock.
      */
     async addItem(sku: string, quantity = 1, fulfilment?: FulfilmentChoice) {
-      await ensureCart();
+      const refused = await ensureCart();
+      if (refused) return refused;
       const body: Record<string, unknown> = { sku, quantity };
       const dist = fulfilment?.distributionChannelKey ?? channel;
       if (dist) body.distributionChannelKey = dist;
@@ -71,12 +112,14 @@ export function useCart() {
       return run(() => bffPut<CartView>(`cart/line-items/${lineItemId}/channel`, choice));
     },
     async addRecurring(sku: string, policyKey = 'monthly') {
-      await ensureCart();
+      const refused = await ensureCart();
+      if (refused) return refused;
       const qs = new URLSearchParams({ recurring: 'true', recurrencePolicy: policyKey });
       return run(() => bffPost<CartView>(`cart/line-items?${qs.toString()}`, { sku }));
     },
     async addBundle(bundleKey: string) {
-      await ensureCart();
+      const refused = await ensureCart();
+      if (refused) return refused;
       return run(() => bffPost<CartView>('cart/bundles', { bundleKey }));
     },
     async changeQuantity(lineItemId: string, quantity: number) {
@@ -90,7 +133,8 @@ export function useCart() {
     },
     /** 4.7 — save the delivery address; the BFF then selects the default shipping method (4.8). */
     async setShippingAddress(address: ShippingAddressInput) {
-      await ensureCart();
+      const refused = await ensureCart();
+      if (refused) return refused;
       return run(() => bffPut<CartView>('cart/shipping-address', address));
     },
     /** 4.8 — change the delivery method to one of the options from `useShippingOptions`. */
@@ -99,7 +143,8 @@ export function useCart() {
     },
     /** Guest checkout contact — the readiness check (6.5) wants a customer OR an email. */
     async setCustomerEmail(email: string) {
-      await ensureCart();
+      const refused = await ensureCart();
+      if (refused) return refused;
       return run(() => bffPut<CartView>('cart/customer-email', { email }));
     },
     /** After sign-in: apply the account's default address + a delivery method to the cart (idempotent). */

@@ -30,6 +30,12 @@ public class CtCartRepository implements CartRepository {
     private static final String EXPAND_DISCOUNT_CODES = "discountCodes[*].discountCode";
     /** Expand each recurring line's policy so the summary can show its frequency (e.g. "Every month"). */
     private static final String EXPAND_RECURRENCE = "lineItems[*].recurrenceInfo.recurrencePolicy";
+    /**
+     * Expand each line's channels so the summary can SAY which channel priced it / sources it (4.5): the
+     * platform stores a bare reference (id); the key the storefront and Canvas work with needs the expansion.
+     */
+    private static final String EXPAND_DISTRIBUTION_CHANNEL = "lineItems[*].distributionChannel";
+    private static final String EXPAND_SUPPLY_CHANNEL = "lineItems[*].supplyChannel";
 
     private final ProjectApiRoot apiRoot;
     private final OwnerStamp ownerStamp;
@@ -52,6 +58,8 @@ public class CtCartRepository implements CartRepository {
         return apiRoot.carts().withId(cartId).get()
                 .withExpand(EXPAND_DISCOUNT_CODES)
                 .addExpand(EXPAND_RECURRENCE)
+                .addExpand(EXPAND_DISTRIBUTION_CHANNEL)
+                .addExpand(EXPAND_SUPPLY_CHANNEL)
                 .executeBlocking().getBody();
     }
 
@@ -80,6 +88,8 @@ public class CtCartRepository implements CartRepository {
                 .withLimit(10)
                 .withExpand(EXPAND_DISCOUNT_CODES)
                 .addExpand(EXPAND_RECURRENCE)
+                .addExpand(EXPAND_DISTRIBUTION_CHANNEL)
+                .addExpand(EXPAND_SUPPLY_CHANNEL)
                 .executeBlocking().getBody().getResults();
     }
 
@@ -92,6 +102,8 @@ public class CtCartRepository implements CartRepository {
                 .withLimit(10)
                 .withExpand(EXPAND_DISCOUNT_CODES)
                 .addExpand(EXPAND_RECURRENCE)
+                .addExpand(EXPAND_DISTRIBUTION_CHANNEL)
+                .addExpand(EXPAND_SUPPLY_CHANNEL)
                 .executeBlocking().getBody().getResults();
     }
 

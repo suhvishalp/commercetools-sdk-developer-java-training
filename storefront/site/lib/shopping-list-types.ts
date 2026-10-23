@@ -4,6 +4,15 @@ export interface SavedItemView {
   sku: string | null;
   name: string;
   quantity: number;
+  /** Optional — a thumbnail and the item's price, when the BFF resolves them for the saved variant. */
+  imageUrl?: string | null;
+  price?: MoneyView | null;
+}
+
+export interface MoneyView {
+  centAmount: number;
+  currencyCode: string;
+  fractionDigits?: number;
 }
 
 export interface SavedListView {
