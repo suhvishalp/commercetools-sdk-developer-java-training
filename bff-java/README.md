@@ -17,6 +17,10 @@ service maps them to your `domain` models.
 - `platform` — shared kernel (the single `ProjectApiRoot` client, config, error advice, and the
   `ShopperSession` — the anonymous id · active cart · signed-in customer every module reads). Don't edit.
 - `project` — the worked reference (`GET /api/project`) **plus your Session-1 Stores tasks**.
+  Its `api` view mapper (`StoreViewMapper`) is the course's one **MapStruct** reference — generated at
+  compile time, injected as a bean. Every other mapper is hand-written on purpose: the SDK → domain
+  mapping in `application` is the boundary you learn to see. (IDEs pick the annotation processor up from
+  the pom; if `StoreViewMapperImpl` is missing, rebuild the `project` module once.)
 - `catalog` — **your Session-2 tasks**: products (PLP/PDP), categories, variants, bundles, slug routing.
 - `product-discovery` — **your Session-3 tasks**: store-scoped Product Search over GraphQL — search,
   full-text, category subtree, facets, PLP orchestration, postFilter.
