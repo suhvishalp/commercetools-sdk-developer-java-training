@@ -44,9 +44,30 @@ public class ApproachTelemetryInterceptor implements HandlerInterceptor {
         String taskId = taskIdOf(handler);
         // Only open a scope for tasks that have an expected-approach rule — no rule, no overhead.
         if (taskId != null && rules.forTask(taskId) != null) {
-            ApproachContext.begin(taskId);
+            ApproachContext.begin(taskId, request.getQueryString(), sourceOf(request));
         }
         return true;
+    }
+
+    /**
+     * Who is calling: Canvas and the storefront proxy send {@code X-Caller}; anything else (curl, a test,
+     * an IDE HTTP client) is "direct". Falls back to the Referer port for older front-ends.
+     */
+    static String sourceOf(HttpServletRequest request) {
+        String caller = request.getHeader("X-Caller");
+        if (caller != null && !caller.isBlank()) {
+            return caller.trim().toLowerCase();
+        }
+        String referer = request.getHeader("Referer");
+        if (referer != null) {
+            if (referer.contains(":5173")) {
+                return "canvas";
+            }
+            if (referer.contains(":3000")) {
+                return "storefront";
+            }
+        }
+        return "direct";
     }
 
     @Override
@@ -65,7 +86,7 @@ public class ApproachTelemetryInterceptor implements HandlerInterceptor {
             if (exp == null) {
                 return;
             }
-            telemetry.record(evaluator.evaluate(exp, scope.calls()));
+            telemetry.record(evaluator.evaluate(exp, scope.calls(), scope.incomingQuery(), scope.source()));
         } catch (Exception ignored) {
             // Never let telemetry affect the request.
         }

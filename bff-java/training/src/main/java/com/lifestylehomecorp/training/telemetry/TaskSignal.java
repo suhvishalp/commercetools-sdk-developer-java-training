@@ -14,6 +14,7 @@ import java.util.List;
  * @param callCount number of commercetools calls observed for the task
  * @param observed  the observed call lines, e.g. ["GET product-projections", "GET categories"]
  * @param checkedAt ISO-8601 timestamp of this check
+ * @param source    who made the attempt: "canvas" (Try It), "storefront" (a page load), or "direct"
  */
 public record TaskSignal(
         String taskId,
@@ -21,7 +22,8 @@ public record TaskSignal(
         List<String> flags,
         int callCount,
         List<String> observed,
-        String checkedAt) {
+        String checkedAt,
+        String source) {
 
     public static final String OK = "OK";
     public static final String FLAGGED = "FLAGGED";

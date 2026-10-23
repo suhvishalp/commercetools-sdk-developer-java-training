@@ -68,6 +68,8 @@ export interface TaskSignal {
   callCount: number;
   observed: string[];
   checkedAt: string;
+  /** Who made the attempt: 'canvas' (Try It), 'storefront' (a page load) or 'direct' (curl, tests). */
+  source?: string | null;
 }
 
 export interface ParticipantTelemetry {
@@ -88,7 +90,7 @@ const BASE = '/api';
 async function getJson<T>(path: string): Promise<Fetched<T>> {
   try {
     const res = await fetch(`${BASE}/${path.replace(/^\/+/, '')}`, {
-      headers: { accept: 'application/json' },
+      headers: { accept: 'application/json', 'x-caller': 'canvas' },
     });
     let data: T | null = null;
     try {
@@ -133,7 +135,8 @@ export async function tryEndpoint(method: string, endpoint: string, requestBody?
   // GET/DELETE (or a query-param-only POST like 4.1) is sent as before, with no content-type.
   const sendsBody = /^(POST|PUT|PATCH)$/i.test(method) && requestBody != null && requestBody.trim() !== '';
   try {
-    const headers: Record<string, string> = { accept: 'application/json' };
+    // X-Caller lets the trainer dashboard say whether a flagged attempt came from Try It or a page load.
+    const headers: Record<string, string> = { accept: 'application/json', 'x-caller': 'canvas' };
     if (sendsBody) headers['content-type'] = 'application/json';
     const res = await fetch(endpoint, { method, headers, ...(sendsBody ? { body: requestBody } : {}) });
     const text = await res.text();

@@ -21,7 +21,19 @@ import java.util.Set;
 public class ApproachEvaluator {
 
     public TaskSignal evaluate(ApproachExpectation exp, List<ObservedCall> calls) {
+        return evaluate(exp, calls, "", "direct");
+    }
+
+    /**
+     * @param incomingQuery the BFF request's own query string — a needle written as {@code ?param:needle}
+     *                      (or the shorthand {@code ?param}) is required only when {@code param} was part of
+     *                      the incoming request. A PLP without a selected channel legitimately has no
+     *                      {@code priceChannel}; a search without a selected store has no {@code stores}.
+     * @param source        who called ("canvas", "storefront", "direct") — carried on the signal
+     */
+    public TaskSignal evaluate(ApproachExpectation exp, List<ObservedCall> calls, String incomingQuery, String source) {
         List<String> flags = new ArrayList<>();
+        String incoming = decode(incomingQuery);
 
         // Distinct resource heads actually called, in first-seen order.
         Set<String> heads = new LinkedHashSet<>();
@@ -53,15 +65,26 @@ public class ApproachEvaluator {
             if (!heads.contains(head)) {
                 return; // conditional call not made (e.g. unknown key) — don't flag
             }
-            for (String needle : needles) {
+            for (String rawNeedle : needles) {
+                String needle = rawNeedle;
+                if (rawNeedle.startsWith("?")) {
+                    String spec = rawNeedle.substring(1);
+                    int colon = spec.indexOf(':');
+                    String param = colon < 0 ? spec : spec.substring(0, colon);
+                    needle = colon < 0 ? spec : spec.substring(colon + 1);
+                    if (!incoming.contains(param)) {
+                        continue; // the caller never asked for it — nothing to require
+                    }
+                }
+                final String probe = needle;
                 boolean seen = calls.stream()
                         .filter(c -> c.head().equals(head))
                         // Match in the query string OR the captured body: for Product Search the shape
                         // (store scope, price context, facets, postFilter) lives in the GraphQL body.
                         .anyMatch(c -> (decode(c.query()) + " " + (c.body() == null ? "" : c.body()))
-                                .contains(needle));
+                                .contains(probe));
                 if (!seen) {
-                    flags.add("missing-predicate: " + needle);
+                    flags.add("missing-predicate: " + probe);
                 }
             }
         });
@@ -80,7 +103,7 @@ public class ApproachEvaluator {
                 .toList();
         String status = flags.isEmpty() ? TaskSignal.OK : TaskSignal.FLAGGED;
         return new TaskSignal(exp.taskId(), status, flags, calls.size(), observed,
-                Instant.now().toString());
+                Instant.now().toString(), source);
     }
 
     private static String decode(String query) {

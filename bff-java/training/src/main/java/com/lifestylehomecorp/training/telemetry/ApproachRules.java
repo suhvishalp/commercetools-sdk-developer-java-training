@@ -31,16 +31,19 @@ public class ApproachRules {
                 rule("catalog", "Session 2", 1, // List products (PLP) — must select the shopper's CONTEXTUAL price
                         List.of("product-projections"), List.of("product-projections"), 1,
                         Map.of("product-projections",
-                                List.of("priceCurrency", "priceCountry", "priceChannel"))),
+                                List.of("priceCurrency", "priceCountry", "?priceChannel"))),
                 rule("catalog", "Session 2", 2, // Get product by key — by-key lookup + contextual price
                         List.of("product-projections"), List.of("product-projections"), 1,
                         Map.of("product-projections",
-                                List.of("priceCurrency", "priceCountry", "priceChannel")),
+                                List.of("priceCurrency", "priceCountry", "?priceChannel")),
                         List.of("key=")),
                 rule("catalog", "Session 2", 3, // List categories
                         List.of("categories"), List.of("categories"), 1, Map.of()),
-                rule("catalog", "Session 2", 4, // Browse by category (T2): resolve category + filtered query
-                        List.of("categories", "product-projections"), List.of("categories"), 2,
+                rule("catalog", "Session 2", 4, // Browse by category (T2): resolve category + filtered query.
+                        // The reference also resolves the price channel key -> id (channels, cached) and rolls
+                        // up bundle prices (one extra product-projections read per bundle on the page), so
+                        // allow channels and up to 6 calls; the N+1 shape still trips at page size.
+                        List.of("categories", "product-projections", "channels"), List.of("categories"), 6,
                         Map.of("product-projections", List.of("categories(id in"))),
                 rule("catalog", "Session 2", 5, // Slug routing (T2): locale fallback chain (requested + 3 project locales)
                         List.of("product-projections"), List.of("product-projections"), 4,
@@ -53,7 +56,7 @@ public class ApproachRules {
                 // ---- Session 3 · catalog (in-store PDP) ----
                 rule("catalog", "Session 3", 2, // In-store PDP — in-store by-key lookup + contextual price
                         List.of("in-store", "channels"), List.of("in-store"), 2,
-                        Map.of("in-store", List.of("priceCurrency", "priceCountry", "priceChannel")),
+                        Map.of("in-store", List.of("priceCurrency", "priceCountry", "?priceChannel")),
                         List.of("key=")),
 
                 // ---- Session 3 · product-discovery (Product Search, one hydrated GraphQL call) ----
@@ -63,28 +66,28 @@ public class ApproachRules {
                 // would show `products`/`product-projections` heads and trip unexpected-api + too-many-calls.
                 rule("product-discovery", "Session 3", 1, // Store-scoped search — store scope + price context
                         List.of("graphql", "stores", "channels"), List.of("graphql"), 4,
-                        Map.of("graphql", List.of("stores", "channelId"))),
+                        Map.of("graphql", List.of("?store=:stores", "channelId"))),
                 rule("product-discovery", "Session 3", 3, // Full-text — fullText clause inside the store scope
                         List.of("graphql", "stores", "channels"), List.of("graphql"), 4,
-                        Map.of("graphql", List.of("fullText", "stores"))),
+                        Map.of("graphql", List.of("fullText", "?store=:stores"))),
                 rule("product-discovery", "Session 3", 4, // Browse by category — categoriesSubTree (2.4 graduates)
                         // `categories` allowed: the service resolves the category key→id (cached) before the search.
                         List.of("graphql", "stores", "channels", "categories"), List.of("graphql"), 4,
-                        Map.of("graphql", List.of("categoriesSubTree", "stores"))),
+                        Map.of("graphql", List.of("categoriesSubTree", "?store=:stores"))),
                 rule("product-discovery", "Session 3", 5, // Facets — facets computed with the store-scoped results
                         List.of("graphql", "stores", "channels"), List.of("graphql"), 4,
-                        Map.of("graphql", List.of("facets", "stores"))),
+                        Map.of("graphql", List.of("facets", "?store=:stores"))),
                 rule("product-discovery", "Session 3", 6, // PLP (T2) — ONE composed search (catch N+1)
                         // `categories` allowed: the composed PLP resolves the category key→id when one is set.
                         List.of("graphql", "stores", "channels", "categories"), List.of("graphql"), 4,
-                        Map.of("graphql", List.of("stores"))),
+                        Map.of("graphql", List.of("?store=:stores"))),
                 rule("product-discovery", "Session 3", 7, // Post-filter (T2) — selection must go to postFilter
                         List.of("graphql", "stores", "channels"), List.of("graphql"), 4,
-                        Map.of("graphql", List.of("postFilter", "stores"))),
+                        Map.of("graphql", List.of("postFilter", "?store=:stores"))),
                 rule("product-discovery", "Session 3", 8, // Configurable facets (T2) — read product-types, then faceted search
                         List.of("graphql", "stores", "channels", "product-types"),
                         List.of("graphql", "product-types"), 4,
-                        Map.of("graphql", List.of("facets", "stores"))));
+                        Map.of("graphql", List.of("facets", "?store=:stores"))));
     }
 
     /** The expectation for a task, or {@code null} if the task has no rule. */
