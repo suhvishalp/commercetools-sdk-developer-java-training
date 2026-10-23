@@ -3,6 +3,7 @@ package com.lifestylehomecorp.training.catalog;
 import com.lifestylehomecorp.platform.annotations.TaskDescription;
 import com.lifestylehomecorp.training.domain.TaskDefinition;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.mvc.condition.PathPatternsRequestCondition;
@@ -27,10 +28,16 @@ public class TaskCatalog {
 
     // ObjectProvider defers resolution until first scan — avoids a construction-time cycle with
     // the MVC config (which itself consumes our WebMvcConfigurer/interceptor).
+    // Qualified by bean NAME on purpose: Spring MVC registers exactly one "requestMappingHandlerMapping",
+    // but adding spring-boot-starter-actuator (a common ask — "give me a health endpoint") registers a
+    // second RequestMappingHandlerMapping, "controllerEndpointHandlerMapping", and an unqualified
+    // getObject() then fails at startup with NoUniqueBeanDefinitionException. The @TaskDescription
+    // controllers live in the standard MVC mapping, so that is the one we scan.
     private final ObjectProvider<RequestMappingHandlerMapping> handlerMappingProvider;
     private volatile List<TaskDefinition> tasks;
 
-    public TaskCatalog(ObjectProvider<RequestMappingHandlerMapping> handlerMappingProvider) {
+    public TaskCatalog(@Qualifier("requestMappingHandlerMapping")
+                       ObjectProvider<RequestMappingHandlerMapping> handlerMappingProvider) {
         this.handlerMappingProvider = handlerMappingProvider;
     }
 
