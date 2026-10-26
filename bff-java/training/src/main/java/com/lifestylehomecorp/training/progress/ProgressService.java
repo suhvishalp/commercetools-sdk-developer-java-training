@@ -47,7 +47,8 @@ public class ProgressService {
         try {
             store.load(identity.id())
                     .ifPresent(pp -> pp.tasks().forEach(
-                            te -> current.put(te.id(), new TaskProgress(te.completed(), te.completedAt()))));
+                            te -> current.put(te.id(),
+                                    new TaskProgress(te.completed(), te.completedAt(), te.conceptAt(), te.taskAt()))));
         } catch (Exception e) {
             log.warn("Could not seed progress on startup: {}", e.getMessage());
         }
@@ -55,11 +56,29 @@ public class ProgressService {
 
     /** Mark a task complete (idempotent). Updates memory synchronously, persists fire-and-forget. */
     public void markComplete(String taskId) {
-        TaskProgress existing = current.get(taskId);
-        if (existing != null && existing.completed()) {
+        TaskProgress existing = current.getOrDefault(taskId, TaskProgress.NONE);
+        if (existing.completed()) {
             return;
         }
-        current.put(taskId, new TaskProgress(true, Instant.now().toString()));
+        current.put(taskId, existing.withCompleted(Instant.now().toString()));
+        persistAsync();
+    }
+
+    /** The steps before a task completes, each recorded once: "concept" (last slide reached), "task" (card opened). */
+    public enum Step { CONCEPT, TASK }
+
+    /**
+     * Record a step for a task (idempotent: the first timestamp stays). Same write-through as
+     * completion, so the trainer dashboard and the Custom Object carry concept → task → Try It.
+     */
+    public void markStep(String taskId, Step step) {
+        TaskProgress existing = current.getOrDefault(taskId, TaskProgress.NONE);
+        String now = Instant.now().toString();
+        TaskProgress next = step == Step.CONCEPT ? existing.withConcept(now) : existing.withTask(now);
+        if (next.equals(existing)) {
+            return;
+        }
+        current.put(taskId, next);
         persistAsync();
     }
 
@@ -112,7 +131,8 @@ public class ProgressService {
 
     private ParticipantProgress snapshot() {
         List<TaskEntry> entries = current.entrySet().stream()
-                .map(e -> new TaskEntry(e.getKey(), e.getValue().completed(), e.getValue().completedAt()))
+                .map(e -> new TaskEntry(e.getKey(), e.getValue().completed(), e.getValue().completedAt(),
+                        e.getValue().conceptAt(), e.getValue().taskAt()))
                 .toList();
         return new ParticipantProgress(
                 identity.id(),
@@ -132,7 +152,7 @@ public class ProgressService {
         });
     }
 
-    Map<String, TaskProgress> currentTasks() {
+    public Map<String, TaskProgress> currentTasks() {
         return Map.copyOf(current);
     }
 }

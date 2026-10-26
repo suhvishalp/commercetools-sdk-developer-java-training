@@ -6,6 +6,8 @@ import com.lifestylehomecorp.training.api.TrainingDtos.ModuleGroup;
 import com.lifestylehomecorp.training.api.TrainingDtos.ParticipantSummary;
 import com.lifestylehomecorp.training.api.TrainingDtos.ProgressResponse;
 import com.lifestylehomecorp.training.api.TrainingDtos.SessionGroup;
+import com.lifestylehomecorp.training.api.TrainingDtos.StepRequest;
+import com.lifestylehomecorp.training.api.TrainingDtos.StepState;
 import com.lifestylehomecorp.training.api.TrainingDtos.TaskItem;
 import com.lifestylehomecorp.training.catalog.TaskCatalog;
 import com.lifestylehomecorp.platform.identity.ParticipantIdentity;
@@ -15,6 +17,9 @@ import com.lifestylehomecorp.training.domain.TaskProgress;
 import com.lifestylehomecorp.training.progress.ProgressService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.LinkedHashMap;
@@ -72,7 +77,33 @@ public class TrainingController {
                 completed++;
             }
         }
-        return new ProgressResponse(identity.id(), completed, all.size(), perTask);
+        Map<String, StepState> steps = new LinkedHashMap<>();
+        progress.currentTasks().forEach((id, tp) -> steps.put(id, new StepState(tp.conceptAt(), tp.taskAt(), tp.completedAt())));
+        return new ProgressResponse(identity.id(), completed, all.size(), perTask, steps);
+    }
+
+    /** The Introduction (slides only) is tracked like a task so the trainer sees who watched it. */
+    public static final String INTRO_ID = "intro";
+
+    /**
+     * Canvas records a step: {"taskId": "...", "step": "concept" | "task"}. Concept = the last slide
+     * was reached; task = the task card was opened. Completion itself still comes from Try It.
+     */
+    @PostMapping("/api/training/progress/step")
+    public ProgressResponse step(@RequestBody StepRequest req) {
+        boolean known = INTRO_ID.equals(req.taskId())
+                || catalog.tasks().stream().anyMatch(t -> t.id().equals(req.taskId()));
+        if (req.taskId() == null || !known) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "unknown taskId: " + req.taskId());
+        }
+        ProgressService.Step step;
+        try {
+            step = ProgressService.Step.valueOf(String.valueOf(req.step()).toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "step must be concept or task");
+        }
+        progress.markStep(req.taskId(), step);
+        return progress();
     }
 
     /** Trainer dashboard: every participant in the container with breakdowns. */
@@ -119,9 +150,11 @@ public class TrainingController {
                 perTier.get(t.tier())[0]++;
             }
         }
+        Map<String, StepState> steps = new LinkedHashMap<>();
+        pp.tasks().forEach(te -> steps.put(te.id(), new StepState(te.conceptAt(), te.taskAt(), te.completedAt())));
         return new ParticipantSummary(
                 pp.participantId(), pp.participantName(), completed, all.size(), pp.updatedAt(),
-                toCounts(perSession), toCounts(perTier), perTask);
+                toCounts(perSession), toCounts(perTier), perTask, steps);
     }
 
     private static Map<String, Counts> toCounts(Map<String, int[]> raw) {
