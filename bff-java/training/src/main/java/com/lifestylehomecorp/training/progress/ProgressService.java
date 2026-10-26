@@ -73,14 +73,31 @@ public class ProgressService {
         return snapshot();
     }
 
+    /**
+     * Storefront capabilities that no task registers on its own but that a task's work makes true:
+     * the PDP's price block is live once the product read with price selection works (2.2), and the
+     * availability badge once the inventory-mode task is done (4.6). Without this map those two
+     * FeatureGates could never unlock (seen in the first delivery).
+     */
+    private static final java.util.Map<String, String> DERIVED_CAPABILITIES = java.util.Map.of(
+            "pricing.resolve", "catalog.pdp",
+            "inventory.read", "cart.stockGate");
+
     /** Distinct capabilities of the current participant's completed tasks (drives FeatureGate). */
     public List<String> unlockedCapabilities() {
-        return catalog.tasks().stream()
+        List<String> direct = catalog.tasks().stream()
                 .filter(t -> isCompleted(t.id()))
                 .map(TaskDefinition::capability)
                 .filter(c -> c != null && !c.isBlank())
                 .distinct()
                 .toList();
+        List<String> all = new java.util.ArrayList<>(direct);
+        DERIVED_CAPABILITIES.forEach((derived, source) -> {
+            if (direct.contains(source) && !all.contains(derived)) {
+                all.add(derived);
+            }
+        });
+        return List.copyOf(all);
     }
 
     public List<ParticipantProgress> allProgress() {
