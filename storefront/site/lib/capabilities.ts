@@ -16,7 +16,7 @@ export interface CapabilityMeta {
 }
 
 // The course's session codenames — keep in step with planning/session-tasks.md (the `## Session N`
-// headers) and the Canvas's SESSION_TITLES in commerce-canvas/src/lib/ui.ts.
+// headers) and the session titles Commerce Canvas shows.
 const SESSION_NAMES: Record<string, string> = {
   'Session 1': 'Ignition — Platform, SDK, Project & Stores',
   'Session 2': 'The Catalogue — Product & Category Reads',
