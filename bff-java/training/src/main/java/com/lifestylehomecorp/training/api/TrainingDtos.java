@@ -23,8 +23,17 @@ public final class TrainingDtos {
     public record ModuleGroup(String module, List<SessionGroup> sessions) {
     }
 
+    /** The three ticks of one task: concept slides finished, task card opened, Try It answered 2xx. */
+    public record StepState(String conceptAt, String taskAt, String completedAt) {
+    }
+
     public record ProgressResponse(
-            String participantId, int completed, int total, Map<String, Boolean> perTask) {
+            String participantId, int completed, int total, Map<String, Boolean> perTask,
+            Map<String, StepState> steps) {
+    }
+
+    /** Body of POST /api/training/progress/step. */
+    public record StepRequest(String taskId, String step) {
     }
 
     public record Counts(int completed, int total) {
@@ -34,7 +43,7 @@ public final class TrainingDtos {
     public record ParticipantSummary(
             String participantId, String participantName, int completed, int total,
             String updatedAt, Map<String, Counts> perSession, Map<String, Counts> perTier,
-            Map<String, Boolean> perTask) {
+            Map<String, Boolean> perTask, Map<String, StepState> steps) {
     }
 
     /** What the Storefront FeatureGate consumes. */
