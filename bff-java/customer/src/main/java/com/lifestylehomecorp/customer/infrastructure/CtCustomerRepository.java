@@ -18,6 +18,7 @@ import com.commercetools.api.models.customer.CustomerUpdateBuilder;
 import com.commercetools.api.models.store.StoreResourceIdentifierBuilder;
 import com.lifestylehomecorp.customer.application.CustomerRepository;
 import com.lifestylehomecorp.customer.application.SignUpInput;
+import com.lifestylehomecorp.customer.domain.VerificationMail;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -29,7 +30,7 @@ import java.util.List;
  *
  * <p>This is the SOLUTION (answer key): every task method carries its SDK call. On the starter branch
  * 5.1 / 5.2 / 5.5 / 5.7 / 5.10 throw {@code TaskNotImplementedException}; {@link #get},
- * {@link #createEmailToken} and {@link #confirmEmail} are trainer-provided plumbing on both.
+ * {@link #createEmailToken}, {@link #findVerificationMail} and {@link #confirmEmail} are trainer-provided plumbing on both.
  */
 @Repository
 public class CtCustomerRepository implements CustomerRepository {
@@ -163,6 +164,34 @@ public class CtCustomerRepository implements CustomerRepository {
                         .ttlMinutes(ttlMinutes)
                         .build())
                 .executeBlocking().getBody();
+    }
+
+    /** The outbox the ecoliving-customer-connectors Event app writes instead of sending a real mail. */
+    static final String MAIL_OUTBOX_CONTAINER = "ecoliving-mail-outbox";
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public java.util.Optional<VerificationMail> findVerificationMail(String customerId) {
+        try {
+            Object value = apiRoot.customObjects()
+                    .withContainerAndKey(MAIL_OUTBOX_CONTAINER, customerId)
+                    .get()
+                    .executeBlocking().getBody().getValue();
+            if (!(value instanceof java.util.Map<?, ?> m)) {
+                return java.util.Optional.empty();
+            }
+            java.util.Map<String, Object> mail = (java.util.Map<String, Object>) m;
+            return java.util.Optional.of(new VerificationMail(
+                    String.valueOf(mail.get("tokenValue")),
+                    mail.get("link") == null ? null : String.valueOf(mail.get("link")),
+                    mail.get("expiresAt") == null ? null : String.valueOf(mail.get("expiresAt")),
+                    mail.get("createdAt") == null ? null : String.valueOf(mail.get("createdAt"))));
+        } catch (io.vrap.rmf.base.client.ApiHttpException e) {
+            if (e.getStatusCode() == 404) {
+                return java.util.Optional.empty();   // no mail yet: the connector is not installed, or still working
+            }
+            throw e;
+        }
     }
 
     @Override

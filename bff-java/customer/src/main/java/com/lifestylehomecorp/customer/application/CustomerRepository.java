@@ -51,6 +51,13 @@ public interface CustomerRepository {
     /** 5.8 (pre-built) — issue an email-verification token for the customer. */
     CustomerToken createEmailToken(String customerId, Long version, long ttlMinutes);
 
+    /**
+     * 5.8 (pre-built) — the verification mail the customer connector "sent" on sign-up, read from its demo
+     * outbox Custom Object ({@code ecoliving-mail-outbox} / customer id). Empty when the connector is not
+     * installed or has not processed this customer yet.
+     */
+    java.util.Optional<com.lifestylehomecorp.customer.domain.VerificationMail> findVerificationMail(String customerId);
+
     /** 5.8 (pre-built) — confirm the email with the token → isEmailVerified = true. */
     Customer confirmEmail(String tokenValue);
 

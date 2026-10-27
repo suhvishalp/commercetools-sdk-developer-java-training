@@ -211,7 +211,10 @@ public class CustomerController {
         return CustomerView.from(customers.resetPassword(req.tokenValue(), req.newPassword()));
     }
 
-    /** 5.8 (pre-built) — issue a verification token for the signed-in customer (demo: returned, not emailed). */
+    /**
+     * 5.8 (pre-built) — the verification mail for the signed-in customer: the one the customer connector sent
+     * on sign-up (read from its demo outbox), or, when there is none, a token the BFF issues itself as a fallback.
+     */
     @PostMapping("/api/customers/email/token")
     public TokenView requestEmailVerification() {
         return TokenView.from(customers.requestEmailVerification());
@@ -220,14 +223,18 @@ public class CustomerController {
     @TaskDescription(
             module = "customer", session = "Session 5", taskNumber = 8,
             title = "Email verification", tier = "T1", capability = "customer.emailVerify",
-            description = "Pre-built — study it. POST /api/customers/email/token issues a CustomerToken for the "
-                    + "signed-in customer (POST /customers/email-token — id + version + ttlMinutes); POST "
-                    + "/api/customers/email/confirm with its value confirms the email (POST "
-                    + "/customers/email/confirm) → isEmailVerified = true. The same two-step token shape as 5.7. "
-                    + "isEmailVerified is a BUSINESS flag, not an auth gate — commercetools signs in unverified "
-                    + "customers; what verification gates is your policy.",
+            description = "Pre-built — study it. Sending the verification mail is NOT the BFF's job: the "
+                    + "ecoliving-customer-connectors Event app (a Subscription on CustomerCreated / CustomerEmailChanged) "
+                    + "creates the token (POST /customers/email-token — id + version + ttlMinutes) and sends the link "
+                    + "the moment the customer exists. The BFF owns the click: POST /api/customers/email/confirm with "
+                    + "the token (POST /customers/email/confirm) → isEmailVerified = true. POST /api/customers/email/token "
+                    + "only shows the mail the connector wrote to its demo outbox (Custom Object ecoliving-mail-outbox / "
+                    + "customer id) — and issues a token itself as a fallback when there is none. isEmailVerified is a "
+                    + "BUSINESS flag, not an auth gate — commercetools signs in unverified customers; what verification "
+                    + "gates is your policy.",
             hint = "Docs: Customers overview — customer email verification "
-                    + "(docs.commercetools.com/api/customers-overview#customer-email-verification).")
+                    + "(docs.commercetools.com/api/customers-overview#customer-email-verification); Subscriptions — "
+                    + "messages (docs.commercetools.com/api/projects/subscriptions).")
     @PostMapping("/api/customers/email/confirm")
     public CustomerView confirmEmail(@RequestBody EmailConfirmRequest req) {
         return CustomerView.from(customers.confirmEmail(req.tokenValue()));

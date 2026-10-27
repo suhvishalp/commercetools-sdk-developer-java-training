@@ -40,8 +40,9 @@ clone and run them locally.
 
 | Repository | What it is | Session |
 |---|---|---|
-| [`lhc-order-flow-connector`](https://github.com/commercetools/lhc-order-flow-connector) | The cart-rules **Service** app (an API Extension's production home) and the order-events **Event** app (a Subscription-fed handler). | 8 · 9 |
-| [`lhc-price-feed-connector`](https://github.com/commercetools/lhc-price-feed-connector) | The nightly price-feed **Job** app (CSV → Import API). | 8 · 9 |
+| [`ecoliving-order-connectors`](https://github.com/commercetools/ecoliving-order-connectors) | The cart-rules **Service** app (an API Extension's production home) and the order-events **Event** app (a Subscription-fed handler). | 8 · 9 |
+| [`ecoliving-price-feed-connector`](https://github.com/commercetools/ecoliving-price-feed-connector) | The nightly price-feed **Job** app (CSV → Import API). | 8 · 9 |
+| [`ecoliving-customer-connectors`](https://github.com/commercetools/ecoliving-customer-connectors) | Installed before the course, demo only: the email-verification **Event** app behind task 5.8 (a Subscription) and the customer-number **Service** app (an API Extension). | 5 · 8 |
 
 ## Prerequisites
 - **JDK 17** and **Maven** · **Node 18+** and **npm** · **Git**

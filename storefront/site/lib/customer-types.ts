@@ -59,6 +59,10 @@ export interface TokenView {
   tokenValue: string | null;
   expiresAt: string | null;
   note: string | null;
+  /** 'connector' — the customer connector sent the mail (the BFF read its demo outbox); 'bff-demo' — issued by the BFF as a fallback. */
+  source?: 'connector' | 'bff-demo' | null;
+  /** The mail's verification link (connector mails only): /verify-email?token=… on this storefront. */
+  link?: string | null;
 }
 
 /** GET /api/price-context (5.6). */

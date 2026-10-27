@@ -130,24 +130,21 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
 
   const activeCurrency = currency || currencies[0] || 'EUR';
 
-  // Default the currency once the project's currencies are known (prefer the one for the active locale).
-  useEffect(() => {
-    if (!currency && currencies.length > 0) {
-      const localeCurrency = COUNTRY_CONFIG[locale]?.currency;
-      setCurrencyState(localeCurrency && currencies.includes(localeCurrency) ? localeCurrency : currencies[0]);
-    }
-  }, [currency, currencies, locale]);
+  // Default the currency once the project's currencies are known (prefer the one for the active locale) —
+  // set during render, conditionally, so no effect re-renders the tree a second time.
+  if (!currency && currencies.length > 0) {
+    const localeCurrency = COUNTRY_CONFIG[locale]?.currency;
+    setCurrencyState(localeCurrency && currencies.includes(localeCurrency) ? localeCurrency : currencies[0]);
+  }
 
   // Default the country independently (pricing-demo axis), seeded from the active currency's country
   // so the initial (currency, country) pair is consistent; the shopper can then change it freely.
   const storeCountries = activeStore?.countries?.length ? activeStore.countries : null;
   const countries = storeCountries ?? projectCountries;
-  useEffect(() => {
-    if (!country && countries.length > 0) {
-      const byCurrency = COUNTRY_BY_CURRENCY[activeCurrency];
-      setCountryState(byCurrency && countries.includes(byCurrency) ? byCurrency : countries[0]);
-    }
-  }, [country, countries, activeCurrency]);
+  if (!country && countries.length > 0) {
+    const byCurrency = COUNTRY_BY_CURRENCY[activeCurrency];
+    setCountryState(byCurrency && countries.includes(byCurrency) ? byCurrency : countries[0]);
+  }
 
   const storeLangs = useMemo(() => {
     const langs = (activeStore?.languages ?? []).filter(isSupportedLocale);
