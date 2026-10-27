@@ -140,6 +140,7 @@ function VerifyEmailBanner({ customer, live }: { customer: CustomerView; live: b
   const { requestEmailVerification, confirmEmail } = useAccount();
   const [token, setToken] = useState('');
   const [note, setNote] = useState<string | null>(null);
+  const [mail, setMail] = useState<{ source: string | null; link: string | null }>({ source: null, link: null });
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   if (live && customer.emailVerified) {
@@ -159,11 +160,11 @@ function VerifyEmailBanner({ customer, live }: { customer: CustomerView; live: b
             setBusy(true);
             const r = await requestEmailVerification();
             setBusy(false);
-            if (r.ok && r.data) { setToken(r.data.tokenValue ?? ''); setNote(r.data.note); }
+            if (r.ok && r.data) { setToken(r.data.tokenValue ?? ''); setNote(r.data.note); setMail({ source: r.data.source ?? null, link: r.data.link ?? null }); }
           }}
           className="btn btn-dark btn-sm"
         >
-          {busy ? 'Sending…' : 'Send verification link'}
+          {busy ? 'Checking…' : 'Show my verification link'}
         </button>
       </div>
       {note ? (
@@ -171,7 +172,15 @@ function VerifyEmailBanner({ customer, live }: { customer: CustomerView; live: b
           className="space-y-2"
           onSubmit={async (e) => { e.preventDefault(); setBusy(true); const r = await confirmEmail(token.trim()); setBusy(false); if (r.ok) setDone(true); }}
         >
-          <p className="text-xs">We’ve sent a verification code to your inbox — enter it below.</p>
+          {mail.source === 'connector' ? (
+            <p className="text-xs">
+              We sent you a verification email when you signed up.{' '}
+              {mail.link ? <a href={mail.link} className="font-medium underline">Open the link from that email</a> : null}
+              {' '}or paste its code below.
+            </p>
+          ) : (
+            <p className="text-xs">We’ve sent a verification code to your inbox — enter it below.</p>
+          )}
           <div className="flex gap-2">
             <input value={token} onChange={(e) => setToken(e.target.value)} className={`${input} font-mono !text-xs`} placeholder="Verification code" />
             <button type="submit" disabled={busy || !token} className="btn btn-dark">Verify</button>

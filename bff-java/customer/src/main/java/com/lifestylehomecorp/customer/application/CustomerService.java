@@ -401,11 +401,35 @@ public class CustomerService {
         return CustomerMapper.toProfile(repo.resetPassword(tokenValue, newPassword));
     }
 
-    /** 5.8 (pre-built) — issue an email-verification token for the signed-in customer. */
+    /**
+     * 5.8 (pre-built) — the verification mail for the signed-in customer.
+     *
+     * <p>Sending the mail is not the BFF's job. The ecoliving-customer-connectors Event app (a Subscription
+     * on CustomerCreated / CustomerEmailChanged) creates the token and sends the link the moment the
+     * customer exists; the BFF's part is the click, {@link #confirmEmail}. Because the course has no mail
+     * provider, the connector writes the mail to a demo outbox and this method shows it. Only when no
+     * connector mail exists (connector not installed, account older than it) does the BFF fall back to
+     * issuing a token itself — with the demo note that says so.
+     */
     public IssuedToken requestEmailVerification() {
         Customer c = repo.get(session.requireCustomerId());
+        java.util.Optional<com.lifestylehomecorp.customer.domain.VerificationMail> sent =
+                repo.findVerificationMail(c.getId()).filter(CustomerService::stillValid);
+        if (sent.isPresent()) {
+            var m = sent.get();
+            return new IssuedToken(m.tokenValue(), m.expiresAt(), IssuedToken.CONNECTOR_NOTE,
+                    IssuedToken.SOURCE_CONNECTOR, m.link());
+        }
         CustomerToken t = repo.createEmailToken(c.getId(), c.getVersion(), TOKEN_TTL_MINUTES);
-        return new IssuedToken(t.getValue(), String.valueOf(t.getExpiresAt()), IssuedToken.DEMO_NOTE);
+        return new IssuedToken(t.getValue(), String.valueOf(t.getExpiresAt()), IssuedToken.FALLBACK_NOTE);
+    }
+
+    private static boolean stillValid(com.lifestylehomecorp.customer.domain.VerificationMail m) {
+        try {
+            return m.expiresAt() == null || java.time.Instant.parse(m.expiresAt()).isAfter(java.time.Instant.now());
+        } catch (java.time.format.DateTimeParseException e) {
+            return true;
+        }
     }
 
     /** 5.8 (pre-built) — confirm the email → isEmailVerified = true (a business flag, not an auth gate). */

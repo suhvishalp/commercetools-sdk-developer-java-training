@@ -44,7 +44,7 @@ export function useAccount() {
     changePassword(currentPassword: string, newPassword: string) {
       return run(() => bffPost<CustomerView>('account/password', { currentPassword, newPassword }));
     },
-    /** 5.8 — issue a verification token (demo: returned, in production emailed) and confirm it. */
+    /** 5.8 — the verification mail (sent by the customer connector on sign-up; the BFF falls back to issuing a token) and the confirm. */
     requestEmailVerification() {
       return bffPost<TokenView>('customers/email/token');
     },
