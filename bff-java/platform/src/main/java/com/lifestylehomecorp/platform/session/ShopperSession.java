@@ -2,6 +2,8 @@ package com.lifestylehomecorp.platform.session;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestAttributes;
@@ -22,6 +24,9 @@ import java.util.UUID;
  *       sign-up / sign-in with it hands those resources to the customer (S5).</li>
  *   <li><b>cartId</b> — the active cart (S4). The version is NOT held here — services fetch the latest
  *       before every update (fetch-before-update + 409 retry).</li>
+ *   <li><b>storeKey</b> — the store the shopper's cart lives in (S4). Every cart / order / shopping-list call
+ *       goes through {@code apiRoot.inStore(storeKey)}, so the store is the scope of the whole basket; before
+ *       any cart exists it is the configured default store ({@code lhc.store.default-key}).</li>
  *   <li><b>customerId / customerGroupId</b> — set at sign-in (S5). {@code catalog} reads the group into
  *       price selection (5.6); {@code customer} resolves "me" from here, never from a request param (5.9).</li>
  *   <li><b>checkoutAttempt</b> — the order number promised to Checkout for the current cart version (S6).</li>
@@ -59,6 +64,7 @@ public class ShopperSession {
         private static final long serialVersionUID = 1L;
         private String anonymousId;
         private String cartId;
+        private String storeKey;
         private String customerId;
         private String customerGroupId;
         private CheckoutAttempt checkoutAttempt;
@@ -70,25 +76,55 @@ public class ShopperSession {
     /** Used only outside a web request (background threads, tests). */
     private final State local = new State();
 
+    /** The store a shopper is in before they have a cart — the sample data's store unless configured otherwise. */
+    private final String defaultStoreKey;
+
+    @Autowired
+    public ShopperSession(@Value("${lhc.store.default-key:b2c-retail-store}") String defaultStoreKey) {
+        this.defaultStoreKey = defaultStoreKey;
+    }
+
+    /** Tests and tools: the sample data's store as the default. */
+    public ShopperSession() {
+        this("b2c-retail-store");
+    }
+
     // ---- cart (S4) ----------------------------------------------------------------------------
 
-    /** Remember the active cart (and the anonymous id it was created with). */
-    public void setActiveCart(String id, String anonId) {
+    /** Remember the active cart, the store it lives in, and the anonymous id it was created with. */
+    public void setActiveCart(String id, String anonId, String storeKey) {
         State s = write();
         synchronized (s) {
             s.cartId = id;
+            if (storeKey != null && !storeKey.isBlank()) {
+                s.storeKey = storeKey;
+            }
             if (anonId != null) {
                 s.anonymousId = anonId;
             }
         }
     }
 
-    /** Re-point the session at another cart — after sign-in the customer's (merged) cart becomes active. */
+    /** Re-point the session at another cart in the SAME store — after sign-in the customer's (merged) cart. */
     public void setActiveCart(String id) {
         State s = write();
         synchronized (s) {
             s.cartId = id;
         }
+    }
+
+    /**
+     * The store every cart / order / shopping-list call is scoped to: {@code apiRoot.inStore(storeKey())…}.
+     * The active cart's store, or the default store before the shopper has one.
+     */
+    public String storeKey() {
+        String key = read().storeKey;
+        return key == null || key.isBlank() ? defaultStoreKey : key;
+    }
+
+    /** The default store (the sample data's), for a request that names none. */
+    public String defaultStoreKey() {
+        return defaultStoreKey;
     }
 
     public String cartIdOrNull() {
@@ -205,6 +241,7 @@ public class ShopperSession {
                 local.customerId = null;
                 local.customerGroupId = null;
                 local.cartId = null;
+                local.storeKey = null;
                 local.checkoutAttempt = null;
                 local.anonymousId = UUID.randomUUID().toString();
             }

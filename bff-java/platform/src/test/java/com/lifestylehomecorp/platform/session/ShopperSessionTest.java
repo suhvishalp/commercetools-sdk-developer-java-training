@@ -40,7 +40,7 @@ class ShopperSessionTest {
     @Test
     void theFirstBasketActionCreatesTheSession() {
         MockHttpServletRequest req = browser(null);
-        shopper.setActiveCart("cart-1", "anon-1");
+        shopper.setActiveCart("cart-1", "anon-1", null);
         assertThat(req.getSession(false)).isNotNull();
         assertThat(shopper.cartIdOrNull()).isEqualTo("cart-1");
         assertThat(shopper.anonymousId()).isEqualTo("anon-1");
@@ -51,10 +51,10 @@ class ShopperSessionTest {
         MockHttpSession a = new MockHttpSession();
         MockHttpSession b = new MockHttpSession();
         browser(a);
-        shopper.setActiveCart("cart-a", "anon-a");
+        shopper.setActiveCart("cart-a", "anon-a", null);
         browser(b);
         assertThat(shopper.cartIdOrNull()).isNull();
-        shopper.setActiveCart("cart-b", "anon-b");
+        shopper.setActiveCart("cart-b", "anon-b", null);
         browser(a);
         assertThat(shopper.cartIdOrNull()).isEqualTo("cart-a");
     }
@@ -63,7 +63,7 @@ class ShopperSessionTest {
     void signInRotatesTheSessionIdAndKeepsTheState() {
         MockHttpSession session = new MockHttpSession();
         MockHttpServletRequest req = browser(session);
-        shopper.setActiveCart("cart-1", "anon-1");
+        shopper.setActiveCart("cart-1", "anon-1", null);
         String before = req.getSession(false).getId();
         shopper.signedIn("customer-1", null);
         assertThat(req.getSession(false).getId()).isNotEqualTo(before);
@@ -75,7 +75,7 @@ class ShopperSessionTest {
     void signOutEndsTheSession() {
         MockHttpSession session = new MockHttpSession();
         browser(session);
-        shopper.setActiveCart("cart-1", "anon-1");
+        shopper.setActiveCart("cart-1", "anon-1", null);
         shopper.signedIn("customer-1", "vip");
         shopper.signOut();
         assertThat(session.isInvalid()).isTrue();
@@ -87,7 +87,7 @@ class ShopperSessionTest {
 
     @Test
     void outsideARequestItFallsBackToOneLocalState() {
-        shopper.setActiveCart("cart-1", "anon-1");
+        shopper.setActiveCart("cart-1", "anon-1", null);
         assertThat(shopper.cartIdOrNull()).isEqualTo("cart-1");
         shopper.signOut();
         assertThat(shopper.cartIdOrNull()).isNull();

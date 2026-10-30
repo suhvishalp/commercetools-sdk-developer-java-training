@@ -268,10 +268,12 @@ function CartRow({
   onFulfilment?: (supplyChannelKey: string) => void;
 }) {
   const isBundle = l.children.length > 0;
-  // The line carries the supply channel's ID; the selector works in keys — resolve through the location list.
+  // The line carries the supply channel; the selector works in pickup-location keys. A channel that is not a pickup
+  // location (the store's delivery inventory, set by 4.5 when no pickup is chosen) means Delivery.
   const { unlocked: channelUnlocked } = useCapability('cart.channel');
   const { locations } = usePickupLocations(channelUnlocked && editable);
-  const pickupKey = l.supplyChannelKey ?? (l.supplyChannelId ? locations.find((p) => p.id === l.supplyChannelId)?.key ?? DELIVERY : DELIVERY);
+  const pickup = locations.find((p) => (l.supplyChannelKey ? p.key === l.supplyChannelKey : p.id === l.supplyChannelId));
+  const pickupKey = pickup?.key ?? DELIVERY;
   // The price channel the line was priced from — named only when it is one the shop knows (the store's channels).
   const { channels } = usePreferences();
   const pricedFor = l.distributionChannelKey && channels.includes(l.distributionChannelKey) ? l.distributionChannelKey : null;

@@ -141,7 +141,7 @@ export function useCart() {
     async setShippingMethod(shippingMethodId: string) {
       return run(() => bffPut<CartView>('cart/shipping-method', { shippingMethodId }));
     },
-    /** Guest checkout contact — the readiness check (6.5) wants a customer OR an email. */
+    /** Guest checkout contact — the readiness check (6.1) wants a customer OR an email. */
     async setCustomerEmail(email: string) {
       const refused = await ensureCart();
       if (refused) return refused;

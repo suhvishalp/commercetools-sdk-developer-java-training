@@ -8,7 +8,7 @@ import { ShieldCheck } from '@/components/ui/icons';
 
 /**
  * The payment step — the only browser-side Checkout code in the course (Session 6, pre-built).
- * 1. POST /api/checkout/session on the BFF → { sessionId, projectKey, region, orderNumber } (6.1 / 6.2).
+ * 1. POST /api/checkout/session on the BFF → { sessionId, projectKey, region, orderNumber } (6.3 / 6.2).
  * 2. Mount commercetools Checkout's paymentFlow widget (Payment Only mode) into <div data-ctc />.
  * 3. Checkout creates the Payment and the Order; on `checkout_completed` / `order_created` route to the
  *    confirmation BY ORDER NUMBER (never trust ?orderId alone). The number is also kept in sessionStorage

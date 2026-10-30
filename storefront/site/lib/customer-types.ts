@@ -1,4 +1,4 @@
-/** Wire types of the customer module (Session 5) — mirrors bff-java/customer/api/dto. */
+/** Wire types of the customer module (Session 5) — mirrors bff-java/05-customer/api/dto. */
 
 /** GET /api/session — what the browser may know: signed in, a first name, a pricing tier. No ids (5.9). */
 export interface SessionView {

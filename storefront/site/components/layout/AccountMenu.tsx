@@ -10,15 +10,16 @@ import { ChevronDown, Lock, User } from '@/components/ui/icons';
 
 /**
  * The header's identity affordance — what every shop has top-right. Guest: "Sign in". Signed in:
- * "Hi, Ada ▾" with My account / Sign out. Reads GET /api/session (5.9); until that task is implemented
- * the BFF answers 501 and the menu falls back to a plain Account link (the sign-in page still works —
- * it only needs 5.2). Carries id="cap-customer.session" for the Canvas deep link.
+ * "Hi, Ada ▾" with My account / Sign out. "Sign in" unlocks with 5.2 (the sign-in page only needs the login
+ * task); the greeting reads GET /api/session (5.9) — until that task is tried the header keeps offering the
+ * plain Sign in link. Carries id="cap-customer.session" for the Canvas deep link.
  */
 export function AccountMenu() {
   const t = useTranslations('nav');
   const router = useRouter();
   const { signedIn, firstName, notImplemented, signOut } = useSession();
-  const { unlocked, meta } = useCapability('customer.session');
+  const { unlocked } = useCapability('customer.session');
+  const { unlocked: loginUnlocked, meta: loginMeta } = useCapability('customer.login');
   const { open: openUnlock } = useUnlockDialog();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -39,17 +40,14 @@ export function AccountMenu() {
     </div>
   );
 
-  if (notImplemented || !unlocked) {
-    // 5.9 pending: the storefront cannot ask who is signed in, so it offers the account entry point and
-    // explains what unlocks the greeting.
+  if (!loginUnlocked) {
+    // 5.2 pending: nothing to sign in with yet — the lock explains which task opens the door.
     return wrap(
       <Link
         href="/login"
         onClick={(e) => {
-          if (!unlocked) {
-            e.preventDefault();
-            openUnlock(meta);
-          }
+          e.preventDefault();
+          openUnlock(loginMeta);
         }}
         className="hbtn"
         title="Coming soon"
@@ -61,7 +59,9 @@ export function AccountMenu() {
     );
   }
 
-  if (!signedIn) {
+  if (notImplemented || !unlocked || !signedIn) {
+    // Signed out — or 5.9 not tried yet, so the storefront cannot ask who is signed in: the sign-in page is the
+    // entry point either way (it works from 5.2 on).
     return wrap(
       <Link href="/login" className="hbtn">
         <User size={20} />

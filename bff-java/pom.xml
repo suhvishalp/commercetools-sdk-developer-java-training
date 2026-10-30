@@ -30,13 +30,13 @@
     -->
     <modules>
         <module>platform</module>
-        <module>project</module>
-        <module>catalog</module>
-        <module>product-discovery</module>
-        <module>cart</module>
-        <module>customer</module>
-        <module>order</module>
-        <module>extensibility</module>
+        <module>01-project</module>
+        <module>02-catalog</module>
+        <module>03-product-discovery</module>
+        <module>04-cart</module>
+        <module>05-customer</module>
+        <module>06-order</module>
+        <module>07-extensibility</module>
         <module>training</module>
         <module>app</module>
     </modules>

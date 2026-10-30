@@ -7,6 +7,11 @@
 - commercetools conventions to respect: prefer `key` over `id`; money is centAmount +
   currencyCode; text is LocalizedString; every update requires the current `version`; filter
   with query predicates server-side, not in code.
+- Carts, orders and shopping lists are ALWAYS in-store: `apiRoot.inStore(storeKey).carts()…`,
+  `.inStore(storeKey).orders()…`, `.inStore(storeKey).shoppingLists()…` — never the project-wide
+  `apiRoot.carts()` / `orders()` / `shoppingLists()`. Every repository method takes the `storeKey`; the service
+  passes `ShopperSession.storeKey()` (the cart's store, else the default store). The one exception is
+  back-office code that handles orders of every store (the 7.4 order consumer), and it says so.
 - Java 17, Maven multi-module. Each domain module must be independently runnable.
 - Each domain module is internally layered (hexagonal): api / application / domain / infrastructure.
   The `infrastructure` repository holds ONLY the commercetools SDK call and returns raw SDK types;

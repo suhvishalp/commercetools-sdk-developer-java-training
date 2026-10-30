@@ -1,4 +1,4 @@
-/** Wire types of the extensibility module (Session 7) — mirrors bff-java/extensibility/domain. */
+/** Wire types of the extensibility module (Session 7) — mirrors bff-java/07-extensibility/domain. */
 
 /** 7.1 — the `order-extras` Custom Fields on the cart (and, after the commit, on the order). */
 export interface CartExtrasView {

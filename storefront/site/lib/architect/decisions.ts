@@ -484,6 +484,7 @@ export const DECISIONS: ArchitectDecision[] = [
     "demo": "What the account page shows, and account deletion.",
     "demoable": "live",
     "capabilities": [
+      "customer.pii",
       "customer.profile"
     ],
     "sdkTasks": [
@@ -746,11 +747,12 @@ export const DECISIONS: ArchitectDecision[] = [
     "demoable": "live",
     "capabilities": [
       "order.checkoutSession",
+      "order.checkoutMode",
       "order.create"
     ],
     "sdkTasks": [
-      "6.1",
       "6.3",
+      "6.4",
       "6.10"
     ],
     "cilTasks": [

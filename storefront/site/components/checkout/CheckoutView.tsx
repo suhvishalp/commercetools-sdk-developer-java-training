@@ -73,10 +73,10 @@ const STEPS = [
  * Checkout (Session 6) on commercetools Checkout, Payment Only mode — a step-by-step wizard, one step on
  * screen at a time: 1 Contact (signed in, or a guest email) · 2 Delivery address (4.7; pre-filled from the
  * account's default address after sign-in) · 3 Delivery method (4.8; the default is pre-selected, switchable)
- * · 4 Review & pay (readiness 6.5 → Checkout's payment widget 6.1 / 6.2). The active step follows the cart's
+ * · 4 Review & pay (readiness 6.1 → Checkout's payment widget 6.3 / 6.2). The active step follows the cart's
  * progress automatically (the first thing still missing); completed steps collapse to a summary row with
  * "Change", which re-opens them. Checkout then creates the Payment and the Order; the confirmation page
- * reads them back (6.3).
+ * reads them back (6.4).
  */
 export function CheckoutView() {
   const locale = useLocale();
@@ -299,7 +299,7 @@ export function CheckoutView() {
             )}
           </FeatureGate>
 
-          {/* 4 · Review & pay (6.5 → 6.1 / 6.2) */}
+          {/* 4 · Review & pay (6.1 → 6.3 / 6.2) */}
           <FeatureGate capability="order.readiness" title="Review & pay">
             {step === 4 ? (
               <StepCard n={4} title="Review & pay">

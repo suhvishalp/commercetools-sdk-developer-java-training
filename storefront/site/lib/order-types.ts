@@ -1,6 +1,6 @@
 import { MoneyView } from './cart-types';
 
-/** Wire types of the order module (Session 6) — mirrors bff-java/order/api/dto. */
+/** Wire types of the order module (Session 6) — mirrors bff-java/06-order/api/dto. */
 export interface CheckoutStartView {
   sessionId: string;
   projectKey: string;
