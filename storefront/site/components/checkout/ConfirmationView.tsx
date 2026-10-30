@@ -18,7 +18,7 @@ const fmt = (m: { centAmount: number; currencyCode: string; fractionDigits: numb
   m ? new Intl.NumberFormat(undefined, { style: 'currency', currency: m.currencyCode }).format(m.centAmount / 10 ** m.fractionDigits) : '—';
 
 /**
- * The confirmation page (6.3 / 6.4 / 6.9): the order commercetools Checkout created, read back BY ORDER
+ * The confirmation page (6.4 / 6.5 / 6.9): the order commercetools Checkout created, read back BY ORDER
  * NUMBER. Reached from the payment step's `checkout_completed` handler (?orderNumber=) or from the
  * Application's paymentReturnUrl (?orderId= — the number is recovered from sessionStorage).
  */

@@ -16,7 +16,7 @@ import java.util.Base64;
 
 /**
  * A client-credentials access token for the APIs the SDK does not wrap — today the Checkout
- * <b>Sessions API</b> (Session 6, task 6.1). The SDK's own {@code ProjectApiRoot} manages its token
+ * <b>Sessions API</b> (Session 6, task 6.3). The SDK's own {@code ProjectApiRoot} manages its token
  * internally and never exposes it, so this provider mints (and caches) one from the same API client.
  * The client must carry {@code manage_sessions}; a 403 from the Sessions API means it does not.
  */

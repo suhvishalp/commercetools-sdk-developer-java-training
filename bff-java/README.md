@@ -16,24 +16,24 @@ service maps them to your `domain` models.
 ## Modules
 - `platform` — shared kernel (the single `ProjectApiRoot` client, config, error advice, and the
   `ShopperSession` — the anonymous id · active cart · signed-in customer every module reads). Don't edit.
-- `project` — the worked reference (`GET /api/project`) **plus your Session-1 Stores tasks**.
+- `01-project` — the worked reference (`GET /api/project`) **plus your Session-1 Stores tasks**.
   Its `api` view mapper (`StoreViewMapper`) is the course's one **MapStruct** reference — generated at
   compile time, injected as a bean. Every other mapper is hand-written on purpose: the SDK → domain
   mapping in `application` is the boundary you learn to see. (IDEs pick the annotation processor up from
   the pom; if `StoreViewMapperImpl` is missing, rebuild the `project` module once.)
-- `catalog` — **your Session-2 tasks**: products (PLP/PDP), categories, variants, bundles, slug routing.
-- `product-discovery` — **your Session-3 tasks**: store-scoped Product Search over GraphQL — search,
+- `02-catalog` — **your Session-2 tasks**: products (PLP/PDP), categories, variants, bundles, slug routing.
+- `03-product-discovery` — **your Session-3 tasks**: store-scoped Product Search over GraphQL — search,
   full-text, category subtree, facets, PLP orchestration, postFilter.
-- `cart` — **your Session-4 tasks**: the guest cart and its write model — create, line items, the bundle
+- `04-cart` — **your Session-4 tasks**: the guest cart and its write model — create, line items, the bundle
   in the cart, a Subscribe & Save line, promo code, the cart summary (channel · address · shipping ·
   shopping list ship pre-built).
-- `customer` — **your Session-5 tasks**: sign-up, sign-in, the guest → customer cart merge, the address
+- `05-customer` — **your Session-5 tasks**: sign-up, sign-in, the guest → customer cart merge, the address
   book, password change / reset, the customer-group price context and `GET /api/session` (profile, email
   verification and the wishlist carry-over ship pre-built).
-- `order` — **your Session-6 tasks**: the Checkout Session with your own order number, reading the order and
+- `06-order` — **your Session-6 tasks**: the Checkout Session with your own order number, reading the order and
   its payment ledger, capture, the guarded order state machine, order history, the subscription born from
   Subscribe & Save (readiness and the ledger ship pre-built).
-- `extensibility` — **your Session-7 tasks**: Custom Fields (gift message), Custom Objects (feature flags),
+- `07-extensibility` — **your Session-7 tasks**: Custom Fields (gift message), Custom Objects (feature flags),
   Messages (order timeline) + the idempotent consumer, the API Extension registration and its cart-rules
   handler, the Import API price feed, and the extensibility decision.
 - `training` — task/progress tracking and the Commerce Canvas bundle it serves at `/canvas`. Don't edit.
